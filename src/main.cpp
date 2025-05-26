@@ -14,6 +14,8 @@ int main(int argc, char** argv) {
     std::vector<fs::path> fpaths;
     app.add_flag(",--recurse", opts.recurse, "recurse");
     app.add_flag("-v,--verbose", opts.verbose, "extra output");
+    app.add_flag("-l,--list", opts.list, "list all tags");
+    app.add_option("-s,--show", opts.show, "show tag values");
     app.add_option("-t,--tag", opts.tag, "set a tag");
     app.add_option("-a,--add", opts.add, "add a tag value");
     app.add_option("-r,--remove", opts.remov, "remove a tag or tag value");
@@ -26,9 +28,9 @@ int main(int argc, char** argv) {
     if(opts.verbose)
         std::cout << "Verbose mode on!\n";
     if (opts.files.size() > 0) {
-        std::cout << "Processing " << opts.files.size() << " files\n";
+//        std::cout << "Processing " << opts.files.size() << " files\n";
         fpaths = collectFiles(opts);
-        std::cout << "Found " << fpaths.size() << " files\n";
+//        std::cout << "Found " << fpaths.size() << " files\n";
     }
     else {
         std::cout << "Hello, world!\n";
