@@ -16,7 +16,7 @@ std::vector<fs::path> collectFiles(const Options& opts) {
         paths = glob::glob(opts.files);
     }
     for (const auto& path : paths) {
-        std::cout << path << "\n";
+//        std::cout << path << "\n";
     }
     return paths;
 }

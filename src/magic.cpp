@@ -2,6 +2,7 @@
 #include "magic.h"
 #include "helpers.h"
 #include "flac.h"
+#include "ape.h"
 #include <vector>
 #include <string>
 #include <iostream>
@@ -23,7 +24,7 @@ int doMagic(const fs::path& path, const Options& opts) {
         std::cout << "Not a taggable file: " << path << "\n";
         return 1;
     }
-    
+    std::cout << "Processing " << path << "\n";
     if (auto* flac = dynamic_cast<TagLib::FLAC::File*>(f.file())) {
         int result = tagFLAC(flac, opts);
         if (result != 0) return result;
@@ -35,7 +36,8 @@ int doMagic(const fs::path& path, const Options& opts) {
     
     }
     else if (auto* ape = dynamic_cast<TagLib::APE::File*>(f.file())) {
-        
+        int result = tagAPE(ape, opts);
+        if (result != 0) return result;   
     }
     else if (auto* mp3 = dynamic_cast<TagLib::MPEG::File*>(f.file())) {
         
