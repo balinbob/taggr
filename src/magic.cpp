@@ -3,6 +3,7 @@
 #include "helpers.h"
 #include "flac.h"
 #include "ape.h"
+#include "mp3.h"
 #include <vector>
 #include <string>
 #include <iostream>
@@ -40,7 +41,8 @@ int doMagic(const fs::path& path, const Options& opts) {
         if (result != 0) return result;   
     }
     else if (auto* mp3 = dynamic_cast<TagLib::MPEG::File*>(f.file())) {
-        
+        int result = tagMP3(mp3, opts);
+        if (result != 0) return result;        
     }
     
     else {

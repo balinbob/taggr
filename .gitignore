@@ -1,0 +1,6 @@
+/.fetchcontent/
+/.vscode/
+/build/
+/.vscode-test/
+/include/CLI11/
+glob.hpp
