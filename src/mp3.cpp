@@ -24,6 +24,32 @@ TagLib::ByteVector keyToID(TagLib::String key) {
     return TagLib::ID3v2::Frame::keyToFrameID(key);
 }
 
+bool removeUserTextFrame(TagLib::ID3v2::Tag* id3v2, TagLib::String desc, TagLib::String value, bool verbose) {
+    TagLib::ID3v2::FrameList txxxFrames = id3v2->frameListMap()["TXXX"];
+    bool removed = false;
+
+    for (auto it = txxxFrames.begin(); it != txxxFrames.end(); ) {
+        auto userTextFrame = dynamic_cast<TagLib::ID3v2::UserTextIdentificationFrame*>(*it);
+        if (userTextFrame) {
+            // does the "key" match?
+            if ((userTextFrame->description() == desc) &&
+                // if there was a value passed, it must match too, else remove the whole frame
+                (value.isEmpty() || userTextFrame->fieldList().size() > 1 && userTextFrame->fieldList()[1] == value))
+                {
+                    if (verbose) std::cout << "Removing TXXX frame: " << userTextFrame->description();
+                    if (verbose && !value.isEmpty()) std::cout << value;
+                    if (verbose) std::cout << "\n";
+                    id3v2->removeFrame(userTextFrame);
+                    it = txxxFrames.erase(it);
+                    removed = true;
+                    continue;
+                }
+        }
+        ++it;
+    }
+    return removed;
+}
+
 
 /**
  * Creates or updates a text frame in the provided ID3v2 tag.
@@ -49,15 +75,38 @@ TagLib::ByteVector keyToID(TagLib::String key) {
 TagLib::ID3v2::Frame* createTextFrame(TagLib::ID3v2::Tag* tag,
                   const TagLib::String &key,
                   const TagLib::String &value,
+                  TagLib::MPEG::File* mp3,
                   bool overwrite)
 {
     using namespace TagLib::ID3v2;
-
+    
     auto id = keyToID(key);
-    if (id.isEmpty()) {
-        std::cerr << "Unknown frame key: " << key << "\n";
-        return nullptr;  // Invalid key, cannot create frame.
+
+    if (id.isEmpty() && key != "PICTURE" && key != "GENERALOBJECT") {
+        UserTextIdentificationFrame *userTextFrame = new UserTextIdentificationFrame(key,
+                                                TagLib::StringList(value),
+                                                TagLib::String::UTF8);           
+        
+        if (overwrite) {
+            // --tag ging so remove existing TXXX:Desc frames
+            if (removeUserTextFrame(tag, key, "", false)) {
+                mp3->save();
+            };
+            // If overwriting, remove all existing frames with this key
+        }
+        else {
+            // Check if the frame already exists
+            auto existingFrames = tag->frameList(id);
+            for (auto *f : existingFrames) {
+                if (auto *userTextFrame = dynamic_cast<UserTextIdentificationFrame*>(f)) {
+                    // If it exists, append the value to the existing frame
+                    userTextFrame->setText(userTextFrame->toStringList().append(value));
+                }
+            }
+        }
+        return userTextFrame;
     }
+
 
     // 1) Collect existing values
     TagLib::StringList values;
@@ -91,6 +140,40 @@ TagLib::ID3v2::Frame* createTextFrame(TagLib::ID3v2::Tag* tag,
     // tag->addFrame(tf);
 }
 
+bool removeTextFrame(TagLib::ID3v2::Tag* tag, 
+                    const TagLib::String &key,
+                    const TagLib::String &value,
+                    bool verbose) {
+    auto props = tag->properties();
+    if (!props.contains(key)) {
+        if (verbose) std::cout << "couldn't find key: " << key << "\n";
+        return false;
+    } 
+    
+    if (!value.isEmpty()) {
+        if (!props[key].contains(value)) {
+            if (verbose) std::cout << key << " has no value " << value << "\n";
+            return false;
+        }
+        auto it = props[key].find(value);
+        props[key].erase(it);
+        if (props[key].isEmpty()) {
+            props.erase(key);
+            if (verbose) std::cout << "Removing " << key << "\n";
+        }
+        else {
+            if (verbose) std::cout << "Removing " << key << " = " << value << "\n";
+        }
+    } 
+    else {
+        props.erase(key);
+        if (verbose) std::cout << "Removing " << key << "\n";
+    }
+    tag->setProperties(props);
+    return true;
+}
+
+
 
 int tagMP3(TagLib::MPEG::File* mp3, const Options& opts) {
     TagLib::ID3v2::Tag* id3v2 = mp3->ID3v2Tag(true);
@@ -98,53 +181,21 @@ int tagMP3(TagLib::MPEG::File* mp3, const Options& opts) {
     bool frameModified = false;
     auto const& frameMap = id3v2->frameListMap();
 
-    
     if (opts.remov.size() > 0) {
         mp3->strip(TagLib::MPEG::File::ID3v1, true);
-        for (const auto& tagCmd : opts.remov) {
-            const auto& tags = splitOnEquals(tagCmd);
-            for (const auto& entry : frameMap) {
-                TagLib::String key = IDToKey(entry.first);
-                // std::cout << key << "\n";
-                auto frame = reinterpret_cast<TagLib::ID3v2::TextIdentificationFrame*>(entry.second.front());
-                if (tags.second == "") {
-                    if (toLower(key.to8Bit()) == toLower(tags.first)) {
-        //                if (opts.verbose) std::cout  << "Removing all frames for " << keyToID(key) << "\n";
-                        id3v2->removeFrames(entry.first);
-                        if (opts.verbose) std::cout << "Removing " << key << "\n";
-                        modified = true;
-                    }
-                }
-                else {   // field specified
-                    if (toLower(key.to8Bit()) == toLower(tags.first)) {
-                        for (auto const& frame : entry.second) {
-                            TagLib::StringList txtList = reinterpret_cast<TagLib::ID3v2::TextIdentificationFrame*>(frame)
-                                    ->toStringList();
-                            TagLib::StringList filtered;
-                            for (auto const& txt : txtList) {
-                                if (txt != tags.second) {
-                                    filtered.append(txt);
-                                }
-                                else {
-                                    frameModified = true;
-                                }
-                            }
-                            if (filtered.isEmpty()) {
-                                id3v2->removeFrame(frame);
-                                if (opts.verbose) std::cout << "Removing " << key << "\n";
-                                modified = true;
-                            }
-                            else if (frameModified) {
-                                reinterpret_cast<TagLib::ID3v2::TextIdentificationFrame*>(frame)->setText(filtered);
-                                if (opts.verbose) std::cout << "Removing " << key << " = " << tags.second << "\n";
-                                modified = true;
-                            }
-                            
-                        }
-                    }
-                }
-            }
+        for (auto const& cmd : opts.remov) {
+            auto cmds = splitOnEquals(cmd);
+            auto const& keyToRemove = cmds.first;
+            auto const& frameID = keyToID(keyToRemove);
+            if (frameID != "") modified = removeTextFrame(id3v2, cmds.first, cmds.second, opts.verbose);
+            else modified = removeUserTextFrame(id3v2, cmds.first, cmds.second, opts.verbose);
         }
+    }
+    if (opts.clear) {
+        if (opts.verbose) std::cout << "Clearing all ID3v2 frames\n";
+        mp3->strip();
+        id3v2 = mp3->ID3v2Tag(true);  // Re-fetch the tag after stripping
+        modified = true;
     }
 
     if (opts.tag.size() > 0) {
@@ -155,7 +206,7 @@ int tagMP3(TagLib::MPEG::File* mp3, const Options& opts) {
                 continue;
             }
 
-            TagLib::ID3v2::Frame* frame = createTextFrame(id3v2, tags.first, tags.second, true);
+            TagLib::ID3v2::Frame* frame = createTextFrame(id3v2, tags.first, tags.second, mp3, true);
             if (frame == nullptr) {
                 std::cerr << "Failed to create frame for " << tags.first << "\n";
                 continue;
@@ -175,7 +226,7 @@ int tagMP3(TagLib::MPEG::File* mp3, const Options& opts) {
                 continue;
             }
 
-            TagLib::ID3v2::Frame* frame = createTextFrame(id3v2, tags.first, tags.second, false);
+            TagLib::ID3v2::Frame* frame = createTextFrame(id3v2, tags.first, tags.second, mp3, false);
             if (frame == nullptr) {
                 std::cerr << "Failed to create frame for " << tags.first << "\n";
                 continue;
@@ -233,6 +284,7 @@ int tagMP3(TagLib::MPEG::File* mp3, const Options& opts) {
     if (modified) mp3->save();
     return 0;
 }
+
 
 
 
