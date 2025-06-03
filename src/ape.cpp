@@ -2,99 +2,146 @@
 #include "ape.h"
 #include "helpers.h"
 #include <iostream>
+#include <string>
+#include <fstream>
 #include <taglib/apefile.h>
-#include <taglib/apefooter.h>
 #include <taglib/apeitem.h>
 #include <taglib/apetag.h>
 #include <taglib/tpropertymap.h>
 
 
-
-int tagAPE(TagLib::APE::File* ape, const Options& opts) {
-    if (!ape->hasAPETag()) {
-        std::cout << "Creating APEv2 tag\n";
-    }
-    
+bool removeApeTag(TagLib::APE::File* ape, const TagLib::String& key, const TagLib::String& value, const Options& opts) { 
     auto* apeTag = ape->APETag(true);
     bool modified = false;
-    if (opts.remov.size() > 0) {
-        TagLib::PropertyMap props = apeTag->properties();
-        for (auto& tagCmd : opts.remov) {
-            auto tags = splitOnEquals(tagCmd);
-            if (tags.second == "") {
-                apeTag->removeItem(tags.first.c_str());
-                if (opts.verbose) std::cout << "Removing " << tags.first << "\n";
+
+    if (value.isEmpty()) {
+        apeTag->removeItem(key);
+        if (opts.verbose) std::cout << "Removing " << key << "\n";
+        modified = true;
+    }
+    else {
+
+        auto props = apeTag->properties();
+        auto it = props.find(key);
+        if (it != props.end()) {
+            TagLib::StringList values = it->second;
+            TagLib::StringList filtered;
+            for (auto const& val : values) {
+                if (val != value) {
+                    filtered.append(val);
+                }
+            }
+            if (filtered == values) {
+                if (opts.verbose) std::cout << "couldn't find value: " << value << "\n";
+                return false;
+            }
+            if (filtered.isEmpty()) {
+                apeTag->removeItem(key);
+            }
+            else {
+                props[key] = filtered;
+                apeTag->setProperties(props);
+                if (opts.verbose) std::cout << "Removing " << key << " = " << value << "\n";
                 modified = true;
             }
-            else {
-                auto itProp = props.find(tags.first.c_str());
-                if (itProp != props.end()) {
-                    TagLib::StringList values = itProp->second;
-                    TagLib::StringList filtered;
-                    for (auto const& val : values) {
-                        if (val != tags.second.c_str()) {
-                            filtered.append(val);
-                        }
-                    }
-                    if (filtered.isEmpty()) {
-                        apeTag->removeItem(tags.first.c_str());
-                    }
-                    else {
-                        props[tags.first.c_str()] = filtered;
-                        apeTag->setProperties(props);
-                    }
-                    if (opts.verbose) std::cout << "Removing " << tags.first << " = " << tags.second << "\n";
-                    modified = true;
-                }
-                else {
-                    std::cout << "Key " << tags.first << " not found\n";
-                }
-            }
+        }
+        else {
+            if (opts.verbose) std::cout << "couldn't find key: " << key << "\n";
+            return false;
         }
     }
-    if (opts.tag.size() > 0) {
-        for (auto& tagCmd : opts.tag) {
-            auto tags = splitOnEquals(tagCmd);
-            apeTag->addValue(tags.first.c_str(), tags.second.c_str(), true);
-            if (opts.verbose) std::cout << "Setting " << tags.first << " = " << tags.second << "\n";
-            modified = true;
+
+    if (modified) {
+        ape->save();
+    }
+    return true;
+}
+
+bool addApeTag(TagLib::APE::Tag* apeTag, const Options& opts) {
+    // includes set (--add)
+
+    for (auto const& cmd : opts.tag) {
+        for (auto const& cmd : opts.tag) {
+            auto cmds = splitOnEquals(cmd);
+            apeTag->addValue(cmds.first.c_str(), cmds.second.c_str(), true);
+            if (opts.verbose) std::cout << "Setting " << cmds.first << " = " << cmds.second << "\n";
+        }
+    
+    }
+
+    for (auto const& cmd : opts.add) {
+        auto cmds = splitOnEquals(cmd);
+            apeTag->addValue(cmds.first.c_str(), cmds.second.c_str(), false);
+            if (opts.verbose) std::cout << "Adding " << cmds.first << " = " << cmds.second << "\n";
+    }
+    return true;
+}
+void listApeTag(TagLib::APE::Tag* apeTag, const Options& opts) {
+
+
+    TagLib::PropertyMap props = apeTag->properties();    
+    for (auto& tagCmd : opts.show) {
+        auto prop = props.find(tagCmd.c_str());
+        if (prop != props.end()) {
+            std::cout << prop->first.to8Bit() << ":\t" << prop->second.toString() << "\n";
         }
     }
-    if (opts.add.size() > 0) {
-        for (auto& tagCmd : opts.add) {
-            auto tags = splitOnEquals(tagCmd);
-            if (tags.second == "") {
-                std::cout << "Cannot add empty tag value\n";
-                return 1;
-            }
-            apeTag->addValue(tags.first.c_str(), tags.second.c_str(), false);
-            if (opts.verbose) std::cout << "Adding " << tags.first << " = " << tags.second << "\n";
-            modified = true;
-        }
-    }
-    if (opts.show.size() > 0) {
-        TagLib::PropertyMap props = apeTag->properties();    
-        for (auto& tagCmd : opts.show) {
-            auto itProp = props.find(tagCmd.c_str());
-            if (itProp != props.end()) {
-                for (auto const& val : itProp->second) {
-                    std::cout << val.to8Bit() << "\n";
-                }
-            }
-            else {
-                std::cout << "Key " << tagCmd << " not found\n";
-            }
-        }
-    }
+
     if (opts.list) {
-        TagLib::PropertyMap props = apeTag->properties();
-        for (auto const& prop : props) {
-            std::cout << prop.first.to8Bit() << ":";
-            for (auto const& val : prop.second) {
-                std::cout << "\t" << val.to8Bit() << "\n";
-            }
+        for (auto prop : props) {
+            std::cout << prop.first.to8Bit() << ":\t" << prop.second.toString() << "\n";
+
         }
     }
+    return;
+}
+
+bool addBinary(TagLib::APE::Tag* apeTag, const std::string& path, const std::string& key, const Options& opts) {
+    
+    std::ifstream file(path, std::ios::binary);
+    if (!file.is_open()) {
+        std::cout << "Couldn't open file: " << path << "\n";
+        return false;
+    }
+    std::vector<char> data((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    TagLib::ByteVector dataVector(data.data(), data.size());
+    
+    apeTag->setData(key, dataVector);
+    if (opts.verbose) std::cout << "Adding " << key << "\n";
+    return true;
+}
+
+
+bool tagAPE(TagLib::APE::File* ape, const Options& opts) {
+    auto* apeTag = ape->APETag(true);
+    bool modified = false;
+
+    if (opts.clear) {
+        ape->strip();
+        if (opts.verbose) std::cout << "Clearing all tags\n";
+        modified = true;
+    }
+
+    if (opts.remov.size() > 0) {
+        for (auto& tagCmd : opts.remov) {
+            auto cmds = splitOnEquals(tagCmd);
+            if (!removeApeTag(ape, cmds.first.c_str(), cmds.second.c_str(), opts)) {
+                return false;
+            };
+        }
+    }
+    modified = addApeTag(apeTag, opts); // takes care of setting and adding
+ 
+    if (opts.binary.size() > 0) {       // cover art file
+        for (auto& tagCmd : opts.binary) {
+            auto cmds = splitOnEquals(tagCmd);
+            if (!addBinary(apeTag, cmds.second, cmds.first, opts)) return false;
+            else modified = true;
+        }
+    }
+    
+    listApeTag(apeTag, opts);   // show and list
+    if (ape->save()) std::cout << "Saved\n";
     if (modified) ape->save();
-    return 0;
+    return true;
 }

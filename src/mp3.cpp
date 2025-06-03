@@ -15,6 +15,12 @@
 #include <taglib/id3v2header.h>
 #include <taglib/id3v1genres.h>
 #include <taglib/id3v1tag.h>
+#include <taglib/attachedpictureframe.h>
+#include <fstream>
+#include <filesystem>
+#include <string>
+
+namespace fs = std::filesystem;
 
 TagLib::String IDToKey(TagLib::ByteVector id) {
     return TagLib::ID3v2::Frame::frameIDToKey(id);
@@ -24,7 +30,7 @@ TagLib::ByteVector keyToID(TagLib::String key) {
     return TagLib::ID3v2::Frame::keyToFrameID(key);
 }
 
-bool removeUserTextFrame(TagLib::ID3v2::Tag* id3v2, TagLib::String desc, TagLib::String value, bool verbose) {
+bool removeUserTextFrame(TagLib::ID3v2::Tag* id3v2, const TagLib::String& desc, const TagLib::String& value, bool verbose) {
     TagLib::ID3v2::FrameList txxxFrames = id3v2->frameListMap()["TXXX"];
     bool removed = false;
 
@@ -173,9 +179,42 @@ bool removeTextFrame(TagLib::ID3v2::Tag* tag,
     return true;
 }
 
+bool addPicture(TagLib::MPEG::File* mp3,
+                const std::string& path, 
+                const std::string& key, 
+                const Options& opts) {
+    
+    std::string mimetype;
+    fs::path p(path);
+    std::string ext = p.extension().string();
+    if (toLower(ext) == ".jpg") mimetype = "image/jpeg";
+    else if (toLower(ext) == ".png") mimetype = "image/png";
+    else {
+        std::cout << "Unsupported file type: " << ext << "\n";
+        return false;
+    }
+
+    std::ifstream file(path, std::ios::binary);
+    if (!file.is_open()) {
+        std::cout << "Couldn't open file: " << path << "\n";
+        return false;
+    }
+    std::vector<char> data((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());    
+
+    TagLib::ID3v2::Tag* id3v2 = mp3->ID3v2Tag(true);
+    TagLib::ID3v2::AttachedPictureFrame* frame = new TagLib::ID3v2::AttachedPictureFrame;
+    frame->setMimeType(mimetype);
+    frame->setDescription(key);
+    frame->setType(static_cast<TagLib::ID3v2::AttachedPictureFrame::Type>(pictureTypeFromKey(key)));
+    frame->setTextEncoding(TagLib::String::UTF8);
+    frame->setPicture(TagLib::ByteVector(data.data(), data.size()));
+    id3v2->addFrame(frame);
+    if (opts.verbose) std::cout << "Adding " << key << "\n";
+    return true;
+}
 
 
-int tagMP3(TagLib::MPEG::File* mp3, const Options& opts) {
+bool tagMP3(TagLib::MPEG::File* mp3, const Options& opts) {
     TagLib::ID3v2::Tag* id3v2 = mp3->ID3v2Tag(true);
     bool modified = false;
     bool frameModified = false;
@@ -237,6 +276,15 @@ int tagMP3(TagLib::MPEG::File* mp3, const Options& opts) {
             modified = true;
         }
     }
+
+    if (opts.binary.size() > 0) {
+        for (auto& tagCmd : opts.binary) {
+            auto cmds = splitOnEquals(tagCmd);
+            if (!addPicture(mp3, cmds.second, cmds.first, opts)) return 1;
+            else modified = true;
+        }
+    }
+
     if (opts.show.size() > 0) {
         for (const auto& key : opts.show) {
             TagLib::ByteVector id = keyToID(key);
@@ -281,10 +329,15 @@ int tagMP3(TagLib::MPEG::File* mp3, const Options& opts) {
         }
     }
 
-    if (modified) mp3->save();
-    return 0;
+    if (modified) {
+        if (mp3->save()) {
+            if (opts.verbose) std::cout << "Saved\n";
+            return true;
+        }
+        else {
+            std::cerr << "Failed to save\n";
+            return false;
+        }
+    }
+    return true;
 }
-
-
-
-

@@ -3,71 +3,105 @@
 #include "flac.h"
 #include <string>
 #include <iostream>
+#include <fstream>
 #include <filesystem>
-#include "taglib/fileref.h"
-#include "taglib/tag.h"
-#include "taglib/flacfile.h"
-#include "taglib/vorbisfile.h"
-#include "taglib/vorbisproperties.h"
-#include "taglib/oggflacfile.h"
-#include "taglib/tpropertymap.h"
+#include <taglib/fileref.h>
+#include <taglib/tag.h>
+#include <taglib/flacfile.h>
+#include <taglib/vorbisfile.h>
+#include <taglib/oggflacfile.h>
+#include <taglib/tpropertymap.h>
+#include <taglib/flacpicture.h>
 
-int tagFLAC(TagLib::FLAC::File* flac, const Options& opts) {
+namespace fs = std::filesystem;
+
+bool addPicture(TagLib::FLAC::File* flac, 
+                const std::string& path, 
+                const std::string& key, 
+                const Options& opts) {
+    TagLib::FLAC::Picture *pic = new TagLib::FLAC::Picture;
+    
+    std::string mimetype;
+    fs::path p(path);
+    std::string ext = p.extension().string();
+    if (toLower(ext) == ".jpg") mimetype = "image/jpeg";
+    else if (toLower(ext) == ".png") mimetype = "image/png";
+    pic->setMimeType(mimetype);
+
+    std::ifstream file(path, std::ios::binary);
+    if (!file.is_open()) {
+        std::cout << "Couldn't open file: " << path << "\n";
+        return false;
+    }
+    std::vector<char> data((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());    
+    
+    pic->setData(TagLib::ByteVector(data.data(), data.size()));
+    pic->setType(static_cast<TagLib::FLAC::Picture::Type>(pictureTypeFromKey(key)));
+    flac->addPicture(pic);
+    if (opts.verbose) std::cout << "Adding " << key << "\n";
+    return true;
+}
+
+bool tagFLAC(TagLib::FLAC::File* flac, const Options& opts) {
     bool modified = false;
     auto* vc = flac->xiphComment(true);
     if (opts.remov.size() > 0) {
-        for (auto& tagCmd : opts.remov) {
-            auto tags = splitOnEquals(tagCmd);
-            if (tags.second == "") vc->removeFields(tags.first.c_str());
-            else vc->removeFields(tags.first.c_str(), tags.second.c_str());
+        for (auto& cmd : opts.remov) {
+            auto cmds = splitOnEquals(cmd);
+            if (cmds.second == "") vc->removeFields(cmds.first.c_str());
+            else vc->removeFields(cmds.first.c_str(), cmds.second.c_str());
             if (opts.verbose) {
-                std::cout << "Removing " << tags.first;
-                if (tags.second != "") std::cout << " = " << tags.second;
+                std::cout << "Removing " << cmds.first;
+                if (cmds.second != "") std::cout << " = " << cmds.second;
                 std::cout << "\n";
             }
             modified = true;
         }
     }
     if (opts.tag.size() > 0) {
-        for (auto& tagCmd : opts.tag) {
-            auto tags = splitOnEquals(tagCmd);
-            vc->addField(tags.first.c_str(), tags.second.c_str());
-            if (opts.verbose) std::cout << "Setting " << tags.first << " = " << tags.second << "\n";
+        for (auto& cmd : opts.tag) {
+            auto cmds = splitOnEquals(cmd);
+            if (cmds.second == "") {
+                if (opts.verbose) std::cout << "Cannot set empty tag value\n";
+                return false;
+            }
+            vc->addField(cmds.first.c_str(), cmds.second.c_str());
+            if (opts.verbose) std::cout << "Setting " << cmds.first << " = " << cmds.second << "\n";
             modified = true;
         }
     }
     if (opts.add.size() > 0) {
-        for (auto& tagCmd : opts.add) {
-            auto tags = splitOnEquals(tagCmd);
-            if (tags.second == "") { 
-                std::cout << "Cannot add empty tag value\n";
-                return 1;
+        for (auto& cmd : opts.add) {
+            auto cmds = splitOnEquals(cmd);
+            if (cmds.second == "") { 
+                if (opts.verbose) std::cout << "Cannot add empty tag value\n";
+                return false;
             }
-            vc->addField(tags.first.c_str(), tags.second.c_str(), false);
-            if (opts.verbose) std::cout << "Adding " << tags.first << " = " << tags.second << "\n";
+            vc->addField(cmds.first.c_str(), cmds.second.c_str(), false);
+            if (opts.verbose) std::cout << "Adding " << cmds.first << " = " << cmds.second << "\n";
             modified = true;
         }
     }
     if (opts.show.size() > 0) {
         TagLib::PropertyMap const props = vc->properties();
-        for (auto& tagCmd : opts.show) {
-            auto const tags = splitOnEquals(tagCmd);
-            if (tags.second == "") {
-                auto const itProp = props.find(tags.first.c_str());
-                if (itProp != props.end()) {
-                    std::cout << itProp->first.to8Bit() << ":";
-                    TagLib::StringList values = itProp->second;
+        for (auto& cmd : opts.show) {
+            auto const cmds = splitOnEquals(cmd);
+            if (cmds.second == "") {
+                auto const prop = props.find(cmds.first.c_str());
+                if (prop != props.end()) {
+                    std::cout << prop->first.to8Bit() << ":";
+                    TagLib::StringList values = prop->second;
                     for (auto const& val : values) {
                         std::cout << "\t" << val.to8Bit() << "\n";
                     }
                 }
             }
             else {
-                auto const itProp = props.find(tags.first.c_str());
-                if (itProp != props.end()) {
-                    TagLib::StringList values = itProp->second;
+                auto const prop = props.find(cmds.first.c_str());
+                if (prop != props.end()) {
+                    TagLib::StringList values = prop->second;
                     for (auto const& val : values) {
-                        if (val == tags.second.c_str()) {
+                        if (val == cmds.second.c_str()) {
                             std::cout << val.to8Bit() << "\n";
                         }
                     }
@@ -75,6 +109,16 @@ int tagFLAC(TagLib::FLAC::File* flac, const Options& opts) {
             }
         }
     }
+
+    if (opts.binary.size() > 0) {
+        for (auto& cmd : opts.binary) {
+            auto cmds = splitOnEquals(cmd);
+            if (addPicture(flac, cmds.second, cmds.first, opts)) {
+                modified = true;
+            }
+        }
+    }
+
     if (opts.list) {
         TagLib::PropertyMap const props = vc->properties();
         for (auto const& prop : props) {
@@ -85,7 +129,11 @@ int tagFLAC(TagLib::FLAC::File* flac, const Options& opts) {
         }
     }
     if (modified) {
-        flac->save();
+        if (flac->save()) {
+            if (opts.verbose) std::cout << "Saved\n";
+            return true;
+        }
+        else return false;
     }
-    return 0;
+    return true;
 }

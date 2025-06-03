@@ -4,4 +4,11 @@
 #include <taglib/apetag.h>
 #include "main.h"
 
-int tagAPE(TagLib::APE::File* ape, const Options& opts);
+bool addApeTag(TagLib::APE::Tag* apeTag, const Options& opts);
+bool removeApeTag(TagLib::APE::File* ape, 
+    const TagLib::String& key, 
+    const TagLib::String& value, 
+    const Options& opts);
+void listApeTag(TagLib::APE::Tag* apeTag, const Options& opts);
+bool addBinary(TagLib::APE::Tag* apeTag, const std::string& path, const std::string& key, const Options& opts);
+bool tagAPE(TagLib::APE::File* ape, const Options& opts);

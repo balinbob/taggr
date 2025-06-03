@@ -4,18 +4,21 @@
 #include "flac.h"
 #include "ape.h"
 #include "mp3.h"
+#include "wv.h"
 #include <vector>
 #include <string>
 #include <iostream>
 #include <filesystem>
-#include "taglib/fileref.h"
-#include "taglib/tag.h"
-#include "taglib/flacfile.h"
-#include "taglib/vorbisfile.h"
-#include "taglib/vorbisproperties.h"
-#include "taglib/oggflacfile.h"
-#include "taglib/apefile.h"
-#include "taglib/mpegfile.h"
+#include <taglib/fileref.h>
+#include <taglib/tag.h>
+#include <taglib/flacfile.h>
+#include <taglib/vorbisfile.h>
+#include <taglib/vorbisproperties.h>
+#include <taglib/oggflacfile.h>
+#include <taglib/apefile.h>
+#include <taglib/mpegfile.h>
+#include <taglib/wavpackfile.h>
+
 
 namespace fs = std::filesystem;
 
@@ -26,9 +29,11 @@ int doMagic(const fs::path& path, const Options& opts) {
         return 1;
     }
     std::cout << "Processing " << path << "\n";
+
     if (auto* flac = dynamic_cast<TagLib::FLAC::File*>(f.file())) {
+
         int result = tagFLAC(flac, opts);
-        if (result != 0) return result;
+        if (!result) return result;
     }
     else if (auto* ogg = dynamic_cast<TagLib::Ogg::Vorbis::File*>(f.file())) {
 
@@ -44,7 +49,10 @@ int doMagic(const fs::path& path, const Options& opts) {
         int result = tagMP3(mp3, opts);
         if (result != 0) return result;        
     }
-    
+    else if (auto* wv = dynamic_cast<TagLib::WavPack::File*>(f.file())) {
+        int result = tagWV(wv, opts);
+        if (result != 0) return result;
+    }   
     else {
         std::cout << "Unknown taggable file: " << path << "\n";
         return 1;

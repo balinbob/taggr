@@ -20,6 +20,7 @@ int main(int argc, char** argv) {
     app.add_option("-t,--tag", opts.tag, "set a tag");
     app.add_option("-a,--add", opts.add, "add a tag value");
     app.add_option("-r,--remove", opts.remov, "remove a tag or tag value");
+    app.add_option("-b,--binary", opts.binary, "set a binary tag (cover art)");
     app.add_option("files", opts.files, "filepaths and/or globs")
                 ->expected(-1);
 
@@ -28,9 +29,7 @@ int main(int argc, char** argv) {
     if(opts.verbose)
         std::cout << "Verbose mode on!\n";
     if (opts.files.size() > 0) {
-//        std::cout << "Processing " << opts.files.size() << " files\n";
         fpaths = collectFiles(opts);
-//        std::cout << "Found " << fpaths.size() << " files\n";
     }
     else {
         std::cout << "Hello, world!\n";

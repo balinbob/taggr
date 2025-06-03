@@ -13,6 +13,7 @@ struct Options {
     std::vector<std::string> tag;
     std::vector<std::string> add;
     std::vector<std::string> remov;
+    std::vector<std::string> binary;
     std::vector<std::string> files;
 };
 
