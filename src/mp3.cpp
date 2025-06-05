@@ -228,6 +228,12 @@ bool tagMP3(TagLib::MPEG::File* mp3, const Options& opts) {
             auto const& frameID = keyToID(keyToRemove);
             if (frameID != "") modified = removeTextFrame(id3v2, cmds.first, cmds.second, opts.verbose);
             else modified = removeUserTextFrame(id3v2, cmds.first, cmds.second, opts.verbose);
+            
+            if (frameID == "APIC") {
+            }
+            if (opts.verbose) std::cout << "Removing " << cmds.first;
+            if (opts.verbose && cmds.second != "") std::cout << " = " << cmds.second;
+            std::cout << "\n";
         }
     }
     if (opts.clear) {
@@ -304,9 +310,9 @@ bool tagMP3(TagLib::MPEG::File* mp3, const Options& opts) {
         }
     }
     if (opts.list) {
-        std::cout << "ID3v1 tag:\n";
-        if (mp3->ID3v1Tag()) {
+        if (mp3->hasID3v1Tag()) {
             auto id3v1 = mp3->ID3v1Tag();
+            std::cout << "ID3v1 tag:\n";
             std::cout << "Title: " << id3v1->title().to8Bit() << "\n";
             std::cout << "Artist: " << id3v1->artist().to8Bit() << "\n";
             std::cout << "Album: " << id3v1->album().to8Bit() << "\n";
@@ -314,14 +320,18 @@ bool tagMP3(TagLib::MPEG::File* mp3, const Options& opts) {
             std::cout << "Comment: " << id3v1->comment().to8Bit() << "\n";
             std::cout << "Genre: " << id3v1->genre().to8Bit() << "\n";
         }
-        else {
-            std::cout << "No ID3v1 tag found\n";
-        }   
+
         for (const auto& entry : frameMap) {
             const auto& frameID = entry.first;
             const auto& frames = entry.second;
             auto key = IDToKey(frameID);
             for (auto& frame : frames) {
+                if (frame->frameID() == "APIC") {
+                    auto val = reinterpret_cast<TagLib::ID3v2::AttachedPictureFrame*>(frame);
+                    
+                    std::cout << pictureTypeToString(val->type()) << ":\t " << val->toString().to8Bit() << "\n";
+                    continue;
+                }
                 auto txt = reinterpret_cast<TagLib::ID3v2::TextIdentificationFrame*>(frame)
                     ->toString();
                 std::cout << key << ":\t" << txt.to8Bit() << "\n";

@@ -14,6 +14,7 @@ int main(int argc, char** argv) {
     std::vector<fs::path> fpaths;
     app.add_flag(",--recurse", opts.recurse, "recurse");
     app.add_flag("-v,--verbose", opts.verbose, "extra output");
+    app.add_flag("-q,--quiet", opts.quiet, "quiet");
     app.add_flag("-l,--list", opts.list, "list all tags");
     app.add_flag(",--clear", opts.clear, "clear all tags");
     app.add_option("-s,--show", opts.show, "show tag values");

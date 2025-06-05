@@ -45,11 +45,20 @@ bool addPicture(TagLib::FLAC::File* flac,
 bool tagFLAC(TagLib::FLAC::File* flac, const Options& opts) {
     bool modified = false;
     auto* vc = flac->xiphComment(true);
+
     if (opts.remov.size() > 0) {
         for (auto& cmd : opts.remov) {
             auto cmds = splitOnEquals(cmd);
             if (cmds.second == "") vc->removeFields(cmds.first.c_str());
             else vc->removeFields(cmds.first.c_str(), cmds.second.c_str());
+            
+            TagLib::List<TagLib::FLAC::Picture*> const pics = flac->pictureList();
+            for (auto const& pic : pics) {
+                if (pic->type() == static_cast<TagLib::FLAC::Picture::Type>(pictureTypeFromKey(cmds.first))) {
+                    flac->removePicture(pic);
+                    modified = true;
+                }
+            }
             if (opts.verbose) {
                 std::cout << "Removing " << cmds.first;
                 if (cmds.second != "") std::cout << " = " << cmds.second;
@@ -58,6 +67,7 @@ bool tagFLAC(TagLib::FLAC::File* flac, const Options& opts) {
             modified = true;
         }
     }
+
     if (opts.tag.size() > 0) {
         for (auto& cmd : opts.tag) {
             auto cmds = splitOnEquals(cmd);
@@ -70,6 +80,7 @@ bool tagFLAC(TagLib::FLAC::File* flac, const Options& opts) {
             modified = true;
         }
     }
+    
     if (opts.add.size() > 0) {
         for (auto& cmd : opts.add) {
             auto cmds = splitOnEquals(cmd);
@@ -82,6 +93,7 @@ bool tagFLAC(TagLib::FLAC::File* flac, const Options& opts) {
             modified = true;
         }
     }
+    
     if (opts.show.size() > 0) {
         TagLib::PropertyMap const props = vc->properties();
         for (auto& cmd : opts.show) {
@@ -118,16 +130,26 @@ bool tagFLAC(TagLib::FLAC::File* flac, const Options& opts) {
             }
         }
     }
-
+    
     if (opts.list) {
         TagLib::PropertyMap const props = vc->properties();
         for (auto const& prop : props) {
-            std::cout << prop.first.to8Bit() << ":";
-            for (auto const& val : prop.second) {
-                std::cout << "\t" << val.to8Bit() << "\n";
-            }
+            std::cout << prop.first.to8Bit() << ":\t";
+            std::cout << prop.second.toString() << "\n";
+        }
+        TagLib::List<TagLib::FLAC::Picture*> const pics = flac->pictureList();
+        for (auto const& pic : pics) {
+            std::cout << pictureTypeToString(pic->type()) << "\t" << pic->description().to8Bit() << "\n";
         }
     }
+    
+    if (opts.clear) {
+        flac->strip();
+        flac->removePictures();
+        if (opts.verbose) std::cout << "Clearing all tags\n";
+        modified = true;
+    }
+
     if (modified) {
         if (flac->save()) {
             if (opts.verbose) std::cout << "Saved\n";

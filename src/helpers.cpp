@@ -56,3 +56,29 @@ int pictureTypeFromKey(const std::string& originalKey) {
     else return 0; // Other (default)
 }
 
+std::string pictureTypeToString(int type) {
+    switch (type) {
+        case 0:  return "Other";
+        case 1:  return "32x32 PNG Icon";
+        case 2:  return "Other Icon";
+        case 3:  return "Front Cover";
+        case 4:  return "Back Cover";
+        case 5:  return "Leaflet Page";
+        case 6:  return "Media (Label Side)";
+        case 7:  return "Lead Artist/Performer";
+        case 8:  return "Artist/Performer";
+        case 9:  return "Conductor";
+        case 10: return "Band/Orchestra";
+        case 11: return "Composer";
+        case 12: return "Lyricist/Text Writer";
+        case 13: return "Recording Location";
+        case 14: return "During Recording";
+        case 15: return "During Performance";
+        case 16: return "Movie/Video Screen Capture";
+        case 17: return "A Bright Coloured Fish";
+        case 18: return "Illustration";
+        case 19: return "Band/Artist Logotype";
+        case 20: return "Publisher/Studio Logotype";
+        default: return "Unknown";
+    }
+}

@@ -7,6 +7,7 @@
 struct Options {
     bool recurse = false;
     bool verbose = false;
+    bool quiet = false;
     bool list = false;
     bool clear = false;
     std::vector<std::string> show;
