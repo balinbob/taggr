@@ -213,6 +213,32 @@ bool addPicture(TagLib::MPEG::File* mp3,
     return true;
 }
 
+bool removePicture(TagLib::MPEG::File* mp3, 
+                   const std::string& key, 
+                   const std::string& value, 
+                   const Options& opts) {
+
+    bool modified = false;
+    TagLib::ID3v2::Tag* tag = mp3->ID3v2Tag();
+    if (!tag) return false;
+    int type = pictureTypeFromKey(key);  // ie frontcover
+    TagLib::ID3v2::FrameList frames = tag->frameList("APIC");
+    for (auto it = frames.begin(); it != frames.end(); /* no increment here */) {
+        TagLib::ID3v2::AttachedPictureFrame* pic = dynamic_cast<TagLib::ID3v2::AttachedPictureFrame*>(*it);
+        if (pic) {
+            if (pic->type() == type) {
+                tag->removeFrame(pic);
+                it = frames.erase(it);
+                if (opts.verbose) std::cout << "Removing " << pictureTypeToString(type) << "\n";
+                modified = true;
+            } 
+            else {
+               ++it;
+            }
+        }
+    }    
+    return modified; 
+}
 
 bool tagMP3(TagLib::MPEG::File* mp3, const Options& opts) {
     TagLib::ID3v2::Tag* id3v2 = mp3->ID3v2Tag(true);
@@ -220,22 +246,24 @@ bool tagMP3(TagLib::MPEG::File* mp3, const Options& opts) {
     bool frameModified = false;
     auto const& frameMap = id3v2->frameListMap();
 
-    if (opts.remov.size() > 0) {
+    for (auto& cmd : opts.remov) {
         mp3->strip(TagLib::MPEG::File::ID3v1, true);
-        for (auto const& cmd : opts.remov) {
-            auto cmds = splitOnEquals(cmd);
-            auto const& keyToRemove = cmds.first;
-            auto const& frameID = keyToID(keyToRemove);
-            if (frameID != "") modified = removeTextFrame(id3v2, cmds.first, cmds.second, opts.verbose);
-            else modified = removeUserTextFrame(id3v2, cmds.first, cmds.second, opts.verbose);
-            
-            if (frameID == "APIC") {
-            }
-            if (opts.verbose) std::cout << "Removing " << cmds.first;
-            if (opts.verbose && cmds.second != "") std::cout << " = " << cmds.second;
+        auto cmds = splitOnEquals(cmd);
+        auto const& keyToRemove = cmds.first;
+        auto const& frameID = keyToID(keyToRemove);
+        if (frameID != "") if (removeTextFrame(id3v2, cmds.first, cmds.second, opts.verbose)) modified = true;
+        if (frameID == "") if (removeUserTextFrame(id3v2, cmds.first, cmds.second, opts.verbose)) modified = true;
+        
+        // try to remove it as a picture
+        if (!modified && removePicture(mp3, cmds.first, cmds.second, opts)) modified = true;
+ 
+        if (opts.verbose && modified) {
+            std::cout << "Removing " << cmds.first;
+            if (cmds.second != "") std::cout << " = " << cmds.second;
             std::cout << "\n";
         }
     }
+
     if (opts.clear) {
         if (opts.verbose) std::cout << "Clearing all ID3v2 frames\n";
         mp3->strip();
@@ -243,52 +271,46 @@ bool tagMP3(TagLib::MPEG::File* mp3, const Options& opts) {
         modified = true;
     }
 
-    if (opts.tag.size() > 0) {
-        for (auto& tagCmd : opts.tag) {
-            auto tags = splitOnEquals(tagCmd);
-            if (tags.second == "") {
-                std::cerr << "No value specified for tag: " << tags.first << "\n";
-                continue;
-            }
-
-            TagLib::ID3v2::Frame* frame = createTextFrame(id3v2, tags.first, tags.second, mp3, true);
-            if (frame == nullptr) {
-                std::cerr << "Failed to create frame for " << tags.first << "\n";
-                continue;
-            }
-            id3v2->addFrame(frame);
-
-            if (opts.verbose) std::cout << "Setting " << tags.first << " = " << tags.second << "\n";
-            modified = true;
+    for (auto& tagCmd : opts.tag) {
+        auto tags = splitOnEquals(tagCmd);
+        if (tags.second == "") {
+            std::cerr << "No value specified for tag: " << tags.first << "\n";
+            continue;
         }
+
+        TagLib::ID3v2::Frame* frame = createTextFrame(id3v2, tags.first, tags.second, mp3, true);
+        if (frame == nullptr) {
+            std::cerr << "Failed to create frame for " << tags.first << "\n";
+            continue;
+        }
+        id3v2->addFrame(frame);
+
+        if (opts.verbose) std::cout << "Setting " << tags.first << " = " << tags.second << "\n";
+        modified = true;
     }
     
-    if (opts.add.size() > 0) {
-        for (auto& tagCmd : opts.add) {
-            auto tags = splitOnEquals(tagCmd);
-            if (tags.second == "") {
-                std::cerr << "No value specified for tag: " << tags.first << "\n";
-                continue;
-            }
-
-            TagLib::ID3v2::Frame* frame = createTextFrame(id3v2, tags.first, tags.second, mp3, false);
-            if (frame == nullptr) {
-                std::cerr << "Failed to create frame for " << tags.first << "\n";
-                continue;
-            }
-            id3v2->addFrame(frame);
-
-            if (opts.verbose) std::cout << "Adding " << tags.first << " = " << tags.second << "\n";
-            modified = true;
+    for (auto& tagCmd : opts.add) {
+        auto tags = splitOnEquals(tagCmd);
+        if (tags.second == "") {
+            std::cerr << "No value specified for tag: " << tags.first << "\n";
+            continue;
         }
-    }
 
-    if (opts.binary.size() > 0) {
-        for (auto& tagCmd : opts.binary) {
-            auto cmds = splitOnEquals(tagCmd);
-            if (!addPicture(mp3, cmds.second, cmds.first, opts)) return 1;
-            else modified = true;
-        }
+        TagLib::ID3v2::Frame* frame = createTextFrame(id3v2, tags.first, tags.second, mp3, false);
+        if (frame == nullptr) {
+            std::cerr << "Failed to create frame for " << tags.first << "\n";
+            continue;
+       }
+        id3v2->addFrame(frame);
+
+        if (opts.verbose) std::cout << "Adding " << tags.first << " = " << tags.second << "\n";
+        modified = true;
+   }
+
+    for (auto& tagCmd : opts.binary) {
+        auto cmds = splitOnEquals(tagCmd);
+        if (!addPicture(mp3, cmds.second, cmds.first, opts)) return 1;
+        else modified = true;
     }
 
     if (opts.show.size() > 0) {
@@ -349,5 +371,5 @@ bool tagMP3(TagLib::MPEG::File* mp3, const Options& opts) {
             return false;
         }
     }
-    return true;
+    return false;
 }

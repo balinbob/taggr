@@ -22,11 +22,11 @@
 
 namespace fs = std::filesystem;
 
-int doMagic(const fs::path& path, const Options& opts) {
+bool doMagic(const fs::path& path, const Options& opts) {
     TagLib::FileRef f(path.string().c_str());
     if (f.isNull() || !f.file()->isValid()) {
         std::cout << "Not a taggable file: " << path << "\n";
-        return 1;
+        return false;
     }
     if (!opts.quiet) std::cout << "Processing " << path << "\n";
 
@@ -55,7 +55,7 @@ int doMagic(const fs::path& path, const Options& opts) {
     }   
     else {
         std::cout << "Unknown taggable file: " << path << "\n";
-        return 1;
+        return false;
     }
-    return 0;
+    return false;
 }

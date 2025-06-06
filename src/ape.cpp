@@ -61,25 +61,22 @@ bool addApeTag(TagLib::APE::Tag* apeTag, const Options& opts) {
     // includes set (--add)
 
     for (auto const& cmd : opts.tag) {
-        for (auto const& cmd : opts.tag) {
-            auto cmds = splitOnEquals(cmd);
-            apeTag->addValue(cmds.first.c_str(), cmds.second.c_str(), true);
-            if (opts.verbose) std::cout << "Setting " << cmds.first << " = " << cmds.second << "\n";
-        }
-    
+        auto cmds = splitOnEquals(cmd);
+        apeTag->addValue(cmds.first.c_str(), cmds.second.c_str(), true);
+        if (opts.verbose) std::cout << "Setting " << cmds.first << " = " << cmds.second << "\n";
     }
-
+    
     for (auto const& cmd : opts.add) {
         auto cmds = splitOnEquals(cmd);
-            apeTag->addValue(cmds.first.c_str(), cmds.second.c_str(), false);
-            if (opts.verbose) std::cout << "Adding " << cmds.first << " = " << cmds.second << "\n";
+        apeTag->addValue(cmds.first.c_str(), cmds.second.c_str(), false);
+        if (opts.verbose) std::cout << "Adding " << cmds.first << " = " << cmds.second << "\n";
     }
     return true;
 }
 void listApeTag(TagLib::APE::Tag* apeTag, const Options& opts) {
-
-
+    // includes show
     TagLib::PropertyMap props = apeTag->properties();    
+
     for (auto& tagCmd : opts.show) {
         auto prop = props.find(tagCmd.c_str());
         if (prop != props.end()) {
@@ -90,7 +87,6 @@ void listApeTag(TagLib::APE::Tag* apeTag, const Options& opts) {
     if (opts.list) {
         for (auto prop : props) {
             std::cout << prop.first.to8Bit() << ":\t" << prop.second.toString() << "\n";
-
         }
     }
     return;
@@ -122,26 +118,33 @@ bool tagAPE(TagLib::APE::File* ape, const Options& opts) {
         modified = true;
     }
 
-    if (opts.remov.size() > 0) {
-        for (auto& tagCmd : opts.remov) {
-            auto cmds = splitOnEquals(tagCmd);
-            if (!removeApeTag(ape, cmds.first.c_str(), cmds.second.c_str(), opts)) {
-                return false;
-            };
+    for (auto& tagCmd : opts.remov) {
+        auto cmds = splitOnEquals(tagCmd);
+        if (!removeApeTag(ape, cmds.first.c_str(), cmds.second.c_str(), opts)) {
+            return false;
         }
+        modified = true;
     }
+    
     modified = addApeTag(apeTag, opts); // takes care of setting and adding
  
-    if (opts.binary.size() > 0) {       // cover art file
-        for (auto& tagCmd : opts.binary) {
-            auto cmds = splitOnEquals(tagCmd);
-            if (!addBinary(apeTag, cmds.second, cmds.first, opts)) return false;
-            else modified = true;
-        }
+    for (auto& tagCmd : opts.binary) {
+        auto cmds = splitOnEquals(tagCmd);
+        if (!addBinary(apeTag, cmds.second, cmds.first, opts)) return false;
+        else modified = true;
     }
     
     listApeTag(apeTag, opts);   // show and list
-    if (ape->save()) std::cout << "Saved\n";
-    if (modified) ape->save();
-    return true;
+
+    if (modified) {
+        if (ape->save()) {
+            if (opts.verbose) std::cout << "Saved\n";
+            return true;
+        }
+        else {
+            if (opts.verbose) std::cout << "Couldn't save\n";
+            return false;
+        }
+    }
+    return false;
 }

@@ -46,88 +46,74 @@ bool tagFLAC(TagLib::FLAC::File* flac, const Options& opts) {
     bool modified = false;
     auto* vc = flac->xiphComment(true);
 
-    if (opts.remov.size() > 0) {
-        for (auto& cmd : opts.remov) {
-            auto cmds = splitOnEquals(cmd);
-            if (cmds.second == "") vc->removeFields(cmds.first.c_str());
-            else vc->removeFields(cmds.first.c_str(), cmds.second.c_str());
+    for (auto& cmd : opts.remov) {
+        auto cmds = splitOnEquals(cmd);
+        if (cmds.second == "") vc->removeFields(cmds.first.c_str());
+        else vc->removeFields(cmds.first.c_str(), cmds.second.c_str());
             
-            TagLib::List<TagLib::FLAC::Picture*> const pics = flac->pictureList();
-            for (auto const& pic : pics) {
-                if (pic->type() == static_cast<TagLib::FLAC::Picture::Type>(pictureTypeFromKey(cmds.first))) {
-                    flac->removePicture(pic);
-                    modified = true;
-                }
+        TagLib::List<TagLib::FLAC::Picture*> const pics = flac->pictureList();
+        for (auto const& pic : pics) {
+            if (pic->type() == static_cast<TagLib::FLAC::Picture::Type>(pictureTypeFromKey(cmds.first))) {
+                flac->removePicture(pic);
             }
-            if (opts.verbose) {
-                std::cout << "Removing " << cmds.first;
-                if (cmds.second != "") std::cout << " = " << cmds.second;
-                std::cout << "\n";
-            }
-            modified = true;
         }
+        
+        if (opts.verbose) {
+            std::cout << "Removing " << cmds.first;
+            if (cmds.second != "") std::cout << " = " << cmds.second;
+            std::cout << "\n";
+        }
+        modified = true;
     }
 
-    if (opts.tag.size() > 0) {
-        for (auto& cmd : opts.tag) {
-            auto cmds = splitOnEquals(cmd);
-            if (cmds.second == "") {
-                if (opts.verbose) std::cout << "Cannot set empty tag value\n";
-                return false;
-            }
-            vc->addField(cmds.first.c_str(), cmds.second.c_str());
-            if (opts.verbose) std::cout << "Setting " << cmds.first << " = " << cmds.second << "\n";
-            modified = true;
+    for (auto& cmd : opts.tag) {
+        auto cmds = splitOnEquals(cmd);
+        if (cmds.second == "") {
+            if (opts.verbose) std::cout << "Cannot set empty tag value\n";
+            return false;
         }
+        vc->addField(cmds.first.c_str(), cmds.second.c_str());
+        if (opts.verbose) std::cout << "Setting " << cmds.first << " = " << cmds.second << "\n";
+        modified = true;
     }
     
-    if (opts.add.size() > 0) {
-        for (auto& cmd : opts.add) {
-            auto cmds = splitOnEquals(cmd);
-            if (cmds.second == "") { 
-                if (opts.verbose) std::cout << "Cannot add empty tag value\n";
-                return false;
-            }
-            vc->addField(cmds.first.c_str(), cmds.second.c_str(), false);
-            if (opts.verbose) std::cout << "Adding " << cmds.first << " = " << cmds.second << "\n";
-            modified = true;
+    for (auto& cmd : opts.add) {
+        auto cmds = splitOnEquals(cmd);
+        if (cmds.second == "") { 
+            if (opts.verbose) std::cout << "Cannot add empty tag value\n";
+            return false;
         }
+        vc->addField(cmds.first.c_str(), cmds.second.c_str(), false);
+        if (opts.verbose) std::cout << "Adding " << cmds.first << " = " << cmds.second << "\n";
+        modified = true;
     }
     
-    if (opts.show.size() > 0) {
-        TagLib::PropertyMap const props = vc->properties();
-        for (auto& cmd : opts.show) {
-            auto const cmds = splitOnEquals(cmd);
+    TagLib::PropertyMap const props = vc->properties();
+    for (auto& cmd : opts.show) {
+        auto const cmds = splitOnEquals(cmd);
+        auto const prop = props.find(cmds.first.c_str());
+        TagLib::StringList values = prop->second;
+        if (prop != props.end()) {
             if (cmds.second == "") {
-                auto const prop = props.find(cmds.first.c_str());
-                if (prop != props.end()) {
-                    std::cout << prop->first.to8Bit() << ":";
-                    TagLib::StringList values = prop->second;
+                std::cout << prop->first.to8Bit() << ":";
                     for (auto const& val : values) {
                         std::cout << "\t" << val.to8Bit() << "\n";
                     }
-                }
             }
             else {
-                auto const prop = props.find(cmds.first.c_str());
-                if (prop != props.end()) {
-                    TagLib::StringList values = prop->second;
-                    for (auto const& val : values) {
-                        if (val == cmds.second.c_str()) {
-                            std::cout << val.to8Bit() << "\n";
-                        }
+                for (auto const& val : values) {
+                    if (val == cmds.second.c_str()) {
+                        std::cout << prop->first.to8Bit() << ":\t" << val.to8Bit() << "\n";
                     }
                 }
             }
         }
     }
 
-    if (opts.binary.size() > 0) {
-        for (auto& cmd : opts.binary) {
-            auto cmds = splitOnEquals(cmd);
-            if (addPicture(flac, cmds.second, cmds.first, opts)) {
-                modified = true;
-            }
+    for (auto& cmd : opts.binary) {
+        auto cmds = splitOnEquals(cmd);
+        if (addPicture(flac, cmds.second, cmds.first, opts)) {
+            modified = true;
         }
     }
     

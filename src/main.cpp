@@ -35,8 +35,11 @@ int main(int argc, char** argv) {
     else {
         std::cout << "Hello, world!\n";
     }
+    int success = 0;
     for (const auto& path : fpaths) {
-        doMagic(path, opts);
+        if (!doMagic(path, opts)) {
+            success = 1;
+        }
     }
-    return 0;
+    return success;
 }
