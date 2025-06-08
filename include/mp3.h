@@ -18,4 +18,5 @@ TagLib::ID3v2::Frame* createTextFrame(TagLib::ID3v2::Tag* tag,
 bool removeTextFrame(TagLib::ID3v2::Tag* tag, const TagLib::String& key, const TagLib::String & value, bool verbose);
 bool removeUserTextFrame(TagLib::ID3v2::Tag* id3v2, const TagLib::String& desc, const TagLib::String& value, bool verbose);
 bool removePicture(TagLib::MPEG::File* mp3, const std::string& key, const std::string& value, const Options& opts);
+TagLib::ID3v2::Frame* createCommentFrame(TagLib::ID3v2::Tag* id3v2, const TagLib::String& comment);
 bool tagMP3(TagLib::MPEG::File* mp3, const Options& opts);

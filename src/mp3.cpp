@@ -16,6 +16,8 @@
 #include <taglib/id3v1genres.h>
 #include <taglib/id3v1tag.h>
 #include <taglib/attachedpictureframe.h>
+#include <taglib/id3v2framefactory.h>
+#include <taglib/commentsframe.h>
 #include <fstream>
 #include <filesystem>
 #include <string>
@@ -42,9 +44,6 @@ bool removeUserTextFrame(TagLib::ID3v2::Tag* id3v2, const TagLib::String& desc, 
                 // if there was a value passed, it must match too, else remove the whole frame
                 (value.isEmpty() || userTextFrame->fieldList().size() > 1 && userTextFrame->fieldList()[1] == value))
                 {
-                    if (verbose) std::cout << "Removing TXXX frame: " << userTextFrame->description();
-                    if (verbose && !value.isEmpty()) std::cout << value;
-                    if (verbose) std::cout << "\n";
                     id3v2->removeFrame(userTextFrame);
                     it = txxxFrames.erase(it);
                     removed = true;
@@ -87,7 +86,11 @@ TagLib::ID3v2::Frame* createTextFrame(TagLib::ID3v2::Tag* tag,
     using namespace TagLib::ID3v2;
     
     auto id = keyToID(key);
-
+    
+    if (id == "COMM") {
+        return createCommentFrame(tag, value);
+    }
+    
     if (id.isEmpty() && key != "PICTURE" && key != "GENERALOBJECT") {
         UserTextIdentificationFrame *userTextFrame = new UserTextIdentificationFrame(key,
                                                 TagLib::StringList(value),
@@ -240,6 +243,17 @@ bool removePicture(TagLib::MPEG::File* mp3,
     return modified; 
 }
 
+TagLib::ID3v2::Frame* createCommentFrame(TagLib::ID3v2::Tag* id3v2,
+                      const TagLib::String& comment) {
+
+    TagLib::ID3v2::CommentsFrame* frame = new TagLib::ID3v2::CommentsFrame;
+    frame->setTextEncoding(TagLib::String::UTF8);
+    frame->setLanguage("eng");
+    frame->setDescription("Comment");
+    frame->setText(comment);
+    return frame;
+}
+
 bool tagMP3(TagLib::MPEG::File* mp3, const Options& opts) {
     TagLib::ID3v2::Tag* id3v2 = mp3->ID3v2Tag(true);
     bool modified = false;
@@ -350,7 +364,6 @@ bool tagMP3(TagLib::MPEG::File* mp3, const Options& opts) {
             for (auto& frame : frames) {
                 if (frame->frameID() == "APIC") {
                     auto val = reinterpret_cast<TagLib::ID3v2::AttachedPictureFrame*>(frame);
-                    
                     std::cout << pictureTypeToString(val->type()) << ":\t " << val->toString().to8Bit() << "\n";
                     continue;
                 }
