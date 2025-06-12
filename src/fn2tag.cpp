@@ -65,12 +65,9 @@ extractTags(const std::string& filename, const std::string& regexPattern, const 
 // High-level wrapper
 std::map<std::string, std::string> fn2tag(const std::string& fn, const std::string &pattern) {
     auto [regexPattern, groupOrder] = patternToRegex(pattern);
-    //std::cout << "REGEX: " << regexPattern << "\n";
-    //std::cout << "Filename: " << fn << "\n";
     std::map<std::string, std::string> tags = extractTags(fn, regexPattern, groupOrder);
-
-    //for (const auto& pair : tags) {
-    //    std::cout << pair.first << ": " << pair.second << "\n";
-    //}
+    if (tags.empty()) {
+        std::cout << "Filepath does not match pattern: " << pattern << "\n";
+    }
     return tags;
 }

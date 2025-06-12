@@ -2,6 +2,7 @@
 #include "main.h"
 #include "helpers.h"
 #include "mp3.h"
+#include "fn2tag.h"
 #include <taglib/mpegfile.h>
 #include <taglib/id3v2.h>
 #include <taglib/id3v2tag.h>
@@ -254,7 +255,7 @@ TagLib::ID3v2::Frame* createCommentFrame(TagLib::ID3v2::Tag* id3v2,
     return frame;
 }
 
-bool tagMP3(TagLib::MPEG::File* mp3, const Options& opts) {
+bool tagMP3(TagLib::MPEG::File* mp3, const Options& opts, const fs::path& path) {
     TagLib::ID3v2::Tag* id3v2 = mp3->ID3v2Tag(true);
     bool modified = false;
     bool frameModified = false;
@@ -325,6 +326,21 @@ bool tagMP3(TagLib::MPEG::File* mp3, const Options& opts) {
         auto cmds = splitOnEquals(tagCmd);
         if (!addPicture(mp3, cmds.second, cmds.first, opts)) return 1;
         else modified = true;
+    }
+
+    if (opts.fn2tag != "") {
+        auto tags = fn2tag(path.string(), opts.fn2tag);
+        if (opts.verbose) std::cout << "Found " << tags.size() << " tags\n";
+        for (auto const& tag : tags) {
+            TagLib::ID3v2::Frame* frame = createTextFrame(id3v2, tag.first, tag.second, mp3, true);
+            if (frame == nullptr) {
+                std::cerr << "Failed to create frame for " << tag.first << "\n";
+                continue;
+            }
+            id3v2->addFrame(frame);
+            if (opts.verbose) std::cout << "Setting " << tag.first << " = " << tag.second << "\n";
+            modified = true;
+        }
     }
 
     if (opts.show.size() > 0) {

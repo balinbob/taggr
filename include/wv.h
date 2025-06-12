@@ -5,4 +5,4 @@
 
 namespace fs = std::filesystem;
 
-int tagWV(TagLib::WavPack::File* wv, const Options& opts);
+int tagWV(TagLib::WavPack::File* wv, const Options& opts, const fs::path& path);

@@ -14,4 +14,5 @@ bool removeApeTag(TagLib::APE::File* ape,
     const Options& opts);
 void listApeTag(TagLib::APE::Tag* apeTag, const Options& opts);
 bool addBinary(TagLib::APE::Tag* apeTag, const std::string& path, const std::string& key, const Options& opts);
+bool tagFromFn(TagLib::APE::Tag* apeTag, const Options& opts, const std::string& path);
 bool tagAPE(TagLib::APE::File* ape, const Options& opts, const fs::path& path);

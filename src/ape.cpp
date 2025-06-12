@@ -114,10 +114,10 @@ bool tagFromFn(TagLib::APE::Tag* apeTag, const Options& opts, const std::string&
     auto tags = fn2tag(path, opts.fn2tag);
     for (auto const& tag : tags) {
         apeTag->addValue(tag.first.c_str(), tag.second.c_str(), true);
-        if (opts.verbose) std::cout << "Adding " << tag.first << " = " << tag.second << "\n";
+        if (opts.verbose) std::cout << "Setting " << tag.first << " = " << tag.second << "\n";
         modified = true;
     }
-    return true;
+    return modified;
 }
 
 bool tagAPE(TagLib::APE::File* ape, const Options& opts, const fs::path& path) {

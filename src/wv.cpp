@@ -2,6 +2,7 @@
 #include "magic.h"
 #include "helpers.h"
 #include "ape.h"
+#include "fn2tag.h"
 #include <taglib/wavpackfile.h>
 #include <taglib/id3v1tag.h>
 #include <taglib/apetag.h>
@@ -9,7 +10,7 @@
 #include <iostream>
 #include <string>
 
-int tagWV(TagLib::WavPack::File* wv, const Options& opts) {
+int tagWV(TagLib::WavPack::File* wv, const Options& opts, const fs::path& path) {
     bool hasApe = wv->hasAPETag();
     bool hasID3v1 = wv->hasID3v1Tag();
 
@@ -33,6 +34,10 @@ int tagWV(TagLib::WavPack::File* wv, const Options& opts) {
     }
 
     modified = addApeTag(apeTag, opts);
+
+    if (opts.fn2tag != "") {
+        if (tagFromFn(apeTag, opts, path.string())) modified = true;
+    }
 
     listApeTag(apeTag, opts);
     
