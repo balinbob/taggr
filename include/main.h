@@ -15,6 +15,7 @@ struct Options {
     std::vector<std::string> add;
     std::vector<std::string> remov;
     std::vector<std::string> binary;
+    std::string fn2tag = "";
     std::vector<std::string> files;
 };
 

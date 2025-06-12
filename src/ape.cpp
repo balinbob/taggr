@@ -1,6 +1,7 @@
 #include "main.h"
 #include "ape.h"
 #include "helpers.h"
+#include "fn2tag.h"
 #include <iostream>
 #include <string>
 #include <fstream>
@@ -9,6 +10,7 @@
 #include <taglib/apetag.h>
 #include <taglib/tpropertymap.h>
 
+namespace fs = std::filesystem;
 
 bool removeApeTag(TagLib::APE::File* ape, const TagLib::String& key, const TagLib::String& value, const Options& opts) { 
     auto* apeTag = ape->APETag(true);
@@ -83,7 +85,7 @@ void listApeTag(TagLib::APE::Tag* apeTag, const Options& opts) {
             std::cout << prop->first.to8Bit() << ":\t" << prop->second.toString() << "\n";
         }
     }
-
+    
     if (opts.list) {
         for (auto prop : props) {
             std::cout << prop.first.to8Bit() << ":\t" << prop.second.toString() << "\n";
@@ -107,8 +109,18 @@ bool addBinary(TagLib::APE::Tag* apeTag, const std::string& path, const std::str
     return true;
 }
 
+bool tagFromFn(TagLib::APE::Tag* apeTag, const Options& opts, const std::string& path) {
+    bool modified = false;
+    auto tags = fn2tag(path, opts.fn2tag);
+    for (auto const& tag : tags) {
+        apeTag->addValue(tag.first.c_str(), tag.second.c_str(), true);
+        if (opts.verbose) std::cout << "Adding " << tag.first << " = " << tag.second << "\n";
+        modified = true;
+    }
+    return true;
+}
 
-bool tagAPE(TagLib::APE::File* ape, const Options& opts) {
+bool tagAPE(TagLib::APE::File* ape, const Options& opts, const fs::path& path) {
     auto* apeTag = ape->APETag(true);
     bool modified = false;
 
@@ -126,7 +138,7 @@ bool tagAPE(TagLib::APE::File* ape, const Options& opts) {
         modified = true;
     }
     
-    modified = addApeTag(apeTag, opts); // takes care of setting and adding
+    if (addApeTag(apeTag, opts)) modified = true; // takes care of setting and adding
  
     for (auto& tagCmd : opts.binary) {
         auto cmds = splitOnEquals(tagCmd);
@@ -134,6 +146,12 @@ bool tagAPE(TagLib::APE::File* ape, const Options& opts) {
         else modified = true;
     }
     
+
+
+    if (opts.fn2tag != "") {
+        if (tagFromFn(apeTag, opts, path.string())) modified = true;
+    }
+
     listApeTag(apeTag, opts);   // show and list
 
     if (modified) {
