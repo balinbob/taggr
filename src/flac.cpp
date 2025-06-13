@@ -2,6 +2,7 @@
 #include "helpers.h"
 #include "flac.h"
 #include "fn2tag.h"
+#include "ogg.h"
 #include <string>
 #include <iostream>
 #include <fstream>
@@ -15,6 +16,8 @@
 #include <taglib/flacpicture.h>
 
 namespace fs = std::filesystem;
+namespace ogg = TagLib::Ogg;
+namespace flac = TagLib::FLAC;
 
 bool addPicture(TagLib::FLAC::File* flac, 
                 const std::string& path, 
@@ -42,6 +45,35 @@ bool addPicture(TagLib::FLAC::File* flac,
     if (opts.verbose) std::cout << "Adding " << key << "\n";
     return true;
 }    
+
+void showTag(ogg::XiphComment* vc, const Options& opts) {
+    auto props = vc->properties();
+    std::cout << "made it\n";
+    for (auto& cmd : opts.show) {
+        auto cmds = splitOnEquals(cmd);
+        auto const prop = props.find(cmds.first.c_str());
+        if (prop == props.end()) {
+            if (opts.verbose) std::cout << "No such tag: " << cmds.first << "\n";
+            continue;
+        }
+        else {
+            if (cmds.second == "") std::cout << prop->first << ": " << prop->second.toString() << "\n";
+            else {
+                auto const value = prop->second.find(cmds.second.c_str());
+                if (value != prop->second.end()) std::cout << prop->first << ": " << value->to8Bit() << "\n";
+            }
+        }
+    }
+    return;
+}
+
+void listTags(ogg::XiphComment* vc, const Options& opts) {
+    auto props = vc->properties();
+    for (auto prop : props) {
+        std::cout << prop.first.to8Bit() << ":\t" << prop.second.toString() << "\n";
+    }
+    return;
+}
 
 bool tagFLAC(TagLib::FLAC::File* flac, const Options& opts, const fs::path& path) {
     bool modified = false;
@@ -78,8 +110,8 @@ bool tagFLAC(TagLib::FLAC::File* flac, const Options& opts, const fs::path& path
         auto tags = fn2tag(path.string(), opts.fn2tag);
         // modified = true;
     }
-
-
+    
+    
     for (auto& cmd : opts.tag) {
         auto cmds = splitOnEquals(cmd);
         if (cmds.second == "") {
@@ -102,28 +134,6 @@ bool tagFLAC(TagLib::FLAC::File* flac, const Options& opts, const fs::path& path
         modified = true;
     }    
     
-    TagLib::PropertyMap const props = vc->properties();
-    for (auto& cmd : opts.show) {
-        auto const cmds = splitOnEquals(cmd);
-        auto const prop = props.find(cmds.first.c_str());
-        TagLib::StringList values = prop->second;
-        if (prop != props.end()) {
-            if (cmds.second == "") {
-                std::cout << prop->first.to8Bit() << ":";
-                    for (auto const& val : values) {
-                        std::cout << "\t" << val.to8Bit() << "\n";
-                    }    
-            }        
-            else {
-                for (auto const& val : values) {
-                    if (val == cmds.second.c_str()) {
-                        std::cout << prop->first.to8Bit() << ":\t" << val.to8Bit() << "\n";
-                    }    
-                }    
-            }    
-        }    
-    }    
-
     for (auto& cmd : opts.binary) {
         auto cmds = splitOnEquals(cmd);
         if (addPicture(flac, cmds.second, cmds.first, opts)) {
@@ -134,24 +144,22 @@ bool tagFLAC(TagLib::FLAC::File* flac, const Options& opts, const fs::path& path
     if (opts.fn2tag != "") {
         auto tags = fn2tag(path.string(), opts.fn2tag);
         for (const auto& tag : tags) {
-            vc->addField(tag.first.c_str(), tag.second.c_str(), false);
+            vc->addField(tag.first.c_str(), tag.second.c_str(), true);
             if (opts.verbose) std::cout << "Tagging " << tag.first << " = " << tag.second << "\n";
             modified = true;
         }
     }
+    
+    showTag(vc, opts);
 
     if (opts.list) {
-        TagLib::PropertyMap const props = vc->properties();
-        for (auto const& prop : props) {
-            std::cout << prop.first.to8Bit() << ":\t";
-            std::cout << prop.second.toString() << "\n";
-        }    
+        listTags(vc, opts);
         TagLib::List<TagLib::FLAC::Picture*> const pics = flac->pictureList();
         for (auto const& pic : pics) {
             std::cout << pictureTypeToString(pic->type()) << "\t" << pic->description().to8Bit() << "\n";
         }    
     }    
-    
+                        
     if (modified) {
         if (flac->save()) {
             if (opts.verbose) std::cout << "Saved\n";

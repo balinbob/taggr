@@ -18,7 +18,7 @@
 #include <taglib/apefile.h>
 #include <taglib/mpegfile.h>
 #include <taglib/wavpackfile.h>
-
+#include "ogg.h"
 
 namespace fs = std::filesystem;
 
@@ -36,7 +36,8 @@ bool doMagic(const fs::path& path, const Options& opts) {
         if (!result) return result;
     }
     else if (auto* ogg = dynamic_cast<TagLib::Ogg::Vorbis::File*>(f.file())) {
-
+        int result = tagOGG(ogg, opts, path);
+        if (result != 0) return result;
     }
     else if (auto* oggflac = dynamic_cast<TagLib::Ogg::FLAC::File*>(f.file())) {
     
