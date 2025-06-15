@@ -33,7 +33,7 @@ bool doMagic(const fs::path& path, const Options& opts) {
     if (auto* flac = dynamic_cast<TagLib::FLAC::File*>(f.file())) {
 
         int result = tagFLAC(flac, opts, path);
-        if (!result) return result;
+//        if (!result) return result;
     }
     else if (auto* ogg = dynamic_cast<TagLib::Ogg::Vorbis::File*>(f.file())) {
         int result = tagOGG(ogg, opts, path);
@@ -58,5 +58,8 @@ bool doMagic(const fs::path& path, const Options& opts) {
         std::cout << "Unknown taggable file: " << path << "\n";
         return false;
     }
+ 
+ 
+ 
     return false;
 }

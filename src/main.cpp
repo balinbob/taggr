@@ -16,6 +16,7 @@ int main(int argc, char** argv) {
     app.add_flag("-v,--verbose", opts.verbose, "extra output");
     app.add_flag("-q,--quiet", opts.quiet, "quiet"
         "(Don't print filenames)");
+    app.add_flag("-n,--noact", opts.noact, "no action, just show what would be done");
     app.add_flag("-l,--list", opts.list, "list all tags");
     app.add_flag(",--clear", opts.clear, "clear all tags");
     app.add_option("-s,--show", opts.show, "show tag values"
@@ -31,6 +32,7 @@ int main(int argc, char** argv) {
         "\nEx: --binary frontcover=\"cover.jpg\"");
     app.add_option(",--fn2tag", opts.fn2tag, "extract tags from filename"
         "\nEx: --fn2tag \"\\%l\\%n %t.flac\"");
+    app.add_option(",--tag2fn", opts.tag2fn, "set filename from tags");
     app.add_option("files", opts.files, "filepaths and/or globs")
                 ->required()
                 ->expected(-1);

@@ -3,17 +3,8 @@
 #include <vector>
 #include <map>
 #include <regex>
+#include "fn2tag.h"
 
-// List of code to tag name
-const std::map<std::string, std::string> codeToTag = {
-    {"%n", "tracknumber"},
-    {"%t", "title"},
-    {"%l", "album"},
-    {"%a", "artist"},
-    {"%d", "date"},
-    {"%D", "discnumber"}
-    // Add more codes as needed
-};
 
 // Converts a pattern to a regex, returns the regex string AND group order
 std::pair<std::string, std::vector<std::string>>
@@ -63,7 +54,7 @@ extractTags(const std::string& filename, const std::string& regexPattern, const 
 }
 
 // High-level wrapper
-std::map<std::string, std::string> fn2tag(const std::string& fn, const std::string &pattern) {
+const std::map<std::string, std::string> fn2tag(const std::string& fn, const std::string &pattern) {
     auto [regexPattern, groupOrder] = patternToRegex(pattern);
     std::map<std::string, std::string> tags = extractTags(fn, regexPattern, groupOrder);
     if (tags.empty()) {

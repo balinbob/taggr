@@ -1,3 +1,6 @@
+#ifndef FLAC_H
+#define FLAC_H
+
 #include "main.h"
 #include <iostream>
 #include <filesystem>
@@ -13,3 +16,5 @@ bool addPicture(TagLib::FLAC::File* flac, const std::string& path, const std::st
 void showTag(ogg::XiphComment* vc, const Options& opts);
 void listTags(ogg::XiphComment* vc, const Options& opts);
 bool tagFLAC(TagLib::FLAC::File* flac, const Options& opts, const fs::path& path);
+
+#endif

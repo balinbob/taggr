@@ -107,7 +107,7 @@ bool tagOGG(ogg::Vorbis::File* ogg, const Options& opts, const fs::path& path) {
     if (opts.show.size() > 0) showTag(vc, opts);
     
     if (opts.list) listTags(vc, opts);
-
+    
     if (modified) {
         if (ogg->save()) {
             if (opts.verbose) std::cout << "Saved\n";

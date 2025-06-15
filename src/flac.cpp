@@ -2,6 +2,7 @@
 #include "helpers.h"
 #include "flac.h"
 #include "fn2tag.h"
+#include "tag2fn.h"
 #include "ogg.h"
 #include <string>
 #include <iostream>
@@ -48,7 +49,6 @@ bool addPicture(TagLib::FLAC::File* flac,
 
 void showTag(ogg::XiphComment* vc, const Options& opts) {
     auto props = vc->properties();
-    std::cout << "made it\n";
     for (auto& cmd : opts.show) {
         auto cmds = splitOnEquals(cmd);
         auto const prop = props.find(cmds.first.c_str());
@@ -106,11 +106,6 @@ bool tagFLAC(TagLib::FLAC::File* flac, const Options& opts, const fs::path& path
         modified = true;
     }
     
-    if (opts.fn2tag != "") {
-        auto tags = fn2tag(path.string(), opts.fn2tag);
-        // modified = true;
-    }
-    
     
     for (auto& cmd : opts.tag) {
         auto cmds = splitOnEquals(cmd);
@@ -149,7 +144,25 @@ bool tagFLAC(TagLib::FLAC::File* flac, const Options& opts, const fs::path& path
             modified = true;
         }
     }
+
+    std::string newFname = path.string();
+    if (opts.tag2fn != "") {
+        newFname = tag2fn(vc->properties(), opts.tag2fn, opts.verbose);
+        if (newFname != "" && newFname != path.string()) {
+            if (opts.verbose) std::cout << "Renaming to " << newFname << "\n";
+            modified = true;
+        }
+    }
     
+    if (opts.noact) {
+        const auto& props = vc->properties();
+        for (const auto& prop : props) {
+            std::cout << prop.first.to8Bit() << ":\t" << prop.second.toString() << "\n";
+        }
+        std::cout << path << " -> " << newFname << "\n";
+        modified = false;
+    }
+
     showTag(vc, opts);
 
     if (opts.list) {
@@ -162,7 +175,15 @@ bool tagFLAC(TagLib::FLAC::File* flac, const Options& opts, const fs::path& path
                         
     if (modified) {
         if (flac->save()) {
-            if (opts.verbose) std::cout << "Saved\n";
+            if (path != newFname) {
+                try {
+                    fs::rename(path, newFname);
+                    if (opts.verbose) std::cout << "Saved\n";
+                }
+                catch (const std::exception& e) {
+                    std::cout << "Error: " << e.what() << "\n";
+                }
+            }
             return true;
         }
         else return false;

@@ -3,4 +3,7 @@
 /build/
 /.vscode-test/
 /include/CLI11/
+/vcpkg/
+/.vcpkg/
+/vcpkg_installed/
 glob.hpp

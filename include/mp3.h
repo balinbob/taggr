@@ -1,3 +1,5 @@
+#pragma once
+
 #include <iostream>
 #include <taglib/mpegfile.h>
 #include "main.h"
