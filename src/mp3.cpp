@@ -3,6 +3,7 @@
 #include "helpers.h"
 #include "mp3.h"
 #include "fn2tag.h"
+#include "tag2fn.h"
 #include <taglib/mpegfile.h>
 #include <taglib/id3v2.h>
 #include <taglib/id3v2tag.h>
@@ -341,6 +342,24 @@ bool tagMP3(TagLib::MPEG::File* mp3, const Options& opts, const fs::path& path) 
             if (opts.verbose) std::cout << "Setting " << tag.first << " = " << tag.second << "\n";
             modified = true;
         }
+    }
+
+    std::string newFname = path.string();
+    if (opts.tag2fn != "") {
+        newFname = tag2fn(id3v2->properties(), opts.tag2fn, opts.verbose);
+        if (newFname != "" && newFname != path.string()) {
+            if (opts.verbose) std::cout << "Renaming " << path << " to " << newFname << "\n";
+            modified = true;
+        }
+    }
+
+    if (opts.noact) {
+        const auto& props = id3v2->properties();
+        for (const auto& prop : props) {
+            std::cout << prop.first.to8Bit() << ":\t" << prop.second.toString() << "\n";
+        }
+        std::cout << path << " -> " << newFname << "\n";
+        modified = false;
     }
 
     if (opts.show.size() > 0) {

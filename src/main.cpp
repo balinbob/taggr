@@ -1,6 +1,7 @@
 #include "CLI11/CLI.hpp"
 #include "glob/glob.hpp"
 #include "main.h"
+#include "helpers.h"
 #include "collectfiles.h"
 #include "magic.h"
 #include <iostream>
@@ -9,7 +10,7 @@
 
 int main(int argc, char** argv) {
     CLI::App app{"taggr — test"};
-
+    Result res;
     Options opts;
     std::vector<fs::path> fpaths;
     app.add_flag(",--recurse", opts.recurse, "recurse");
@@ -50,9 +51,8 @@ int main(int argc, char** argv) {
     }
     int success = 0;
     for (const auto& path : fpaths) {
-        if (!doMagic(path, opts)) {
-            success = 1;
-        }
+        res = doMagic(path, opts);
     }
+    std::cout << res.newPath.string() << ", " << res.success << "\n";
     return success;
 }

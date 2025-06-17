@@ -22,44 +22,44 @@
 
 namespace fs = std::filesystem;
 
-bool doMagic(const fs::path& path, const Options& opts) {
+Result doMagic(const fs::path& path, const Options& opts) {
+    Result res;
     TagLib::FileRef f(path.string().c_str());
     if (f.isNull() || !f.file()->isValid()) {
         std::cout << "Not a taggable file: " << path << "\n";
-        return false;
+        res.success = false;
     }
     if (!opts.quiet) std::cout << "Processing " << path << "\n";
 
     if (auto* flac = dynamic_cast<TagLib::FLAC::File*>(f.file())) {
 
-        int result = tagFLAC(flac, opts, path);
+        res = tagFLAC(flac, opts, path);
 //        if (!result) return result;
     }
     else if (auto* ogg = dynamic_cast<TagLib::Ogg::Vorbis::File*>(f.file())) {
         int result = tagOGG(ogg, opts, path);
-        if (result != 0) return result;
+//        if (result != 0) return result;
     }
     else if (auto* oggflac = dynamic_cast<TagLib::Ogg::FLAC::File*>(f.file())) {
     
     }
     else if (auto* ape = dynamic_cast<TagLib::APE::File*>(f.file())) {
-        int result = tagAPE(ape, opts, path);
-        if (result != 0) return result;   
+        res = tagAPE(ape, opts, path);
+//        if (result != 0) return result;   
     }
     else if (auto* mp3 = dynamic_cast<TagLib::MPEG::File*>(f.file())) {
         int result = tagMP3(mp3, opts, path);
-        if (result != 0) return result;        
+//        if (result != 0) return result;        
     }
     else if (auto* wv = dynamic_cast<TagLib::WavPack::File*>(f.file())) {
         int result = tagWV(wv, opts, path);
-        if (result != 0) return result;
+//        if (result != 0) return result;
     }   
     else {
         std::cout << "Unknown taggable file: " << path << "\n";
-        return false;
+        res.success = false;
     }
  
+    return res;
  
- 
-    return false;
 }

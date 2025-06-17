@@ -2,6 +2,7 @@
 #define FLAC_H
 
 #include "main.h"
+#include "helpers.h"
 #include <iostream>
 #include <filesystem>
 #include "taglib/fileref.h"
@@ -15,6 +16,5 @@ namespace ogg = TagLib::Ogg;
 bool addPicture(TagLib::FLAC::File* flac, const std::string& path, const std::string& key, const Options& opts);
 void showTag(ogg::XiphComment* vc, const Options& opts);
 void listTags(ogg::XiphComment* vc, const Options& opts);
-bool tagFLAC(TagLib::FLAC::File* flac, const Options& opts, const fs::path& path);
-
+Result tagFLAC(TagLib::FLAC::File* flac, const Options& opts, const fs::path& path);
 #endif

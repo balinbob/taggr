@@ -2,7 +2,7 @@
 #include "helpers.h"
 #include <algorithm>
 #include <cctype>
-
+#include <iostream>
 
 /**
  * Returns a copy of the input string with all characters converted to lower
@@ -81,4 +81,16 @@ std::string pictureTypeToString(int type) {
         case 20: return "Publisher/Studio Logotype";
         default: return "Unknown";
     }
+}
+
+bool doRename(const fs::path& oldPath, const fs::path& newPath, bool verbose) {
+    if (oldPath == newPath) return true;
+    if (verbose) std::cout << "Renaming " << oldPath << " to " << newPath << "\n";
+    try {
+        fs::rename(oldPath, newPath);
+    } catch (const std::exception& e) {
+        std::cerr << "Error renaming " << oldPath << " to " << newPath << ":\n" << e.what() << "\n";
+        return false;
+    }   
+    return true;
 }

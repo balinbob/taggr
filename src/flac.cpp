@@ -1,3 +1,4 @@
+#include <iostream>
 #include "main.h"
 #include "helpers.h"
 #include "flac.h"
@@ -5,7 +6,6 @@
 #include "tag2fn.h"
 #include "ogg.h"
 #include <string>
-#include <iostream>
 #include <fstream>
 #include <filesystem>
 #include <taglib/fileref.h>
@@ -75,7 +75,7 @@ void listTags(ogg::XiphComment* vc, const Options& opts) {
     return;
 }
 
-bool tagFLAC(TagLib::FLAC::File* flac, const Options& opts, const fs::path& path) {
+Result tagFLAC(TagLib::FLAC::File* flac, const Options& opts, const fs::path& path) {
     bool modified = false;
     auto* vc = flac->xiphComment(true);
     
@@ -111,7 +111,7 @@ bool tagFLAC(TagLib::FLAC::File* flac, const Options& opts, const fs::path& path
         auto cmds = splitOnEquals(cmd);
         if (cmds.second == "") {
             if (opts.verbose) std::cout << "Cannot set empty tag value\n";
-            return false;
+            continue;
         }    
         vc->addField(cmds.first.c_str(), cmds.second.c_str());
         if (opts.verbose) std::cout << "Setting " << cmds.first << " = " << cmds.second << "\n";
@@ -122,7 +122,7 @@ bool tagFLAC(TagLib::FLAC::File* flac, const Options& opts, const fs::path& path
         auto cmds = splitOnEquals(cmd);
         if (cmds.second == "") { 
             if (opts.verbose) std::cout << "Cannot add empty tag value\n";
-            return false;
+            continue;
         }    
         vc->addField(cmds.first.c_str(), cmds.second.c_str(), false);
         if (opts.verbose) std::cout << "Adding " << cmds.first << " = " << cmds.second << "\n";
@@ -146,6 +146,7 @@ bool tagFLAC(TagLib::FLAC::File* flac, const Options& opts, const fs::path& path
     }
 
     std::string newFname = path.string();
+
     if (opts.tag2fn != "") {
         newFname = tag2fn(vc->properties(), opts.tag2fn, opts.verbose);
         if (newFname != "" && newFname != path.string()) {
@@ -153,7 +154,11 @@ bool tagFLAC(TagLib::FLAC::File* flac, const Options& opts, const fs::path& path
             modified = true;
         }
     }
-    
+
+    fs::path newPath(newFname);
+    Result res;
+    res.newPath = newPath;
+
     if (opts.noact) {
         const auto& props = vc->properties();
         for (const auto& prop : props) {
@@ -175,18 +180,9 @@ bool tagFLAC(TagLib::FLAC::File* flac, const Options& opts, const fs::path& path
                         
     if (modified) {
         if (flac->save()) {
-            if (path != newFname) {
-                try {
-                    fs::rename(path, newFname);
-                    if (opts.verbose) std::cout << "Saved\n";
-                }
-                catch (const std::exception& e) {
-                    std::cout << "Error: " << e.what() << "\n";
-                }
-            }
-            return true;
+            res.success = true;
         }
-        else return false;
+        else res.success = false;
     }
-    return true;
+    return res;
 }

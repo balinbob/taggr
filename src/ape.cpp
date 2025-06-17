@@ -2,6 +2,7 @@
 #include "ape.h"
 #include "helpers.h"
 #include "fn2tag.h"
+#include "tag2fn.h"
 #include <iostream>
 #include <string>
 #include <fstream>
@@ -120,7 +121,7 @@ bool tagFromFn(TagLib::APE::Tag* apeTag, const Options& opts, const std::string&
     return modified;
 }
 
-bool tagAPE(TagLib::APE::File* ape, const Options& opts, const fs::path& path) {
+Result tagAPE(TagLib::APE::File* ape, const Options& opts, const fs::path& path) {
     auto* apeTag = ape->APETag(true);
     bool modified = false;
 
@@ -133,7 +134,7 @@ bool tagAPE(TagLib::APE::File* ape, const Options& opts, const fs::path& path) {
     for (auto& tagCmd : opts.remov) {
         auto cmds = splitOnEquals(tagCmd);
         if (!removeApeTag(ape, cmds.first.c_str(), cmds.second.c_str(), opts)) {
-            return false;
+            continue;
         }
         modified = true;
     }
@@ -142,14 +143,36 @@ bool tagAPE(TagLib::APE::File* ape, const Options& opts, const fs::path& path) {
  
     for (auto& tagCmd : opts.binary) {
         auto cmds = splitOnEquals(tagCmd);
-        if (!addBinary(apeTag, cmds.second, cmds.first, opts)) return false;
+        if (!addBinary(apeTag, cmds.second, cmds.first, opts)) continue;
         else modified = true;
     }
     
-
-
+    
+    
     if (opts.fn2tag != "") {
         if (tagFromFn(apeTag, opts, path.string())) modified = true;
+    }
+    
+    std::string newFname = path.string();
+    if (opts.tag2fn != "") {
+        newFname = tag2fn(ape->properties(), opts.tag2fn, opts.verbose);
+        if (newFname != "" && newFname != path.string()) {
+            if (opts.verbose) std::cout << "Renaming to " << newFname << "\n";
+            modified = true;
+        }
+    }
+    
+    fs::path newPath(newFname);
+    Result res;
+    res.newPath = newPath;
+    
+    if (opts.noact) {
+        const auto& props = ape->properties();
+        for (const auto& prop : props) {
+            std::cout << prop.first.to8Bit() << ":\t" << prop.second.toString() << "\n";
+        }
+        std::cout << path.string() << " -> " << newPath.string() << "\n";
+        modified = false;
     }
 
     listApeTag(apeTag, opts);   // show and list
@@ -157,12 +180,13 @@ bool tagAPE(TagLib::APE::File* ape, const Options& opts, const fs::path& path) {
     if (modified) {
         if (ape->save()) {
             if (opts.verbose) std::cout << "Saved\n";
-            return true;
+            res.success = true;;
         }
         else {
             if (opts.verbose) std::cout << "Couldn't save\n";
-            return false;
+            res.success = false;
         }
     }
-    return false;
+
+    return res;
 }
