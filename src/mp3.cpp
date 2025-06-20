@@ -256,7 +256,7 @@ TagLib::ID3v2::Frame* createCommentFrame(TagLib::ID3v2::Tag* id3v2,
     return frame;
 }
 
-bool tagMP3(TagLib::MPEG::File* mp3, const Options& opts, const fs::path& path) {
+Result tagMP3(TagLib::MPEG::File* mp3, const Options& opts, const fs::path& path) {
     TagLib::ID3v2::Tag* id3v2 = mp3->ID3v2Tag(true);
     bool modified = false;
     bool frameModified = false;
@@ -325,7 +325,7 @@ bool tagMP3(TagLib::MPEG::File* mp3, const Options& opts, const fs::path& path) 
 
     for (auto& tagCmd : opts.binary) {
         auto cmds = splitOnEquals(tagCmd);
-        if (!addPicture(mp3, cmds.second, cmds.first, opts)) return 1;
+        if (!addPicture(mp3, cmds.second, cmds.first, opts)) continue;
         else modified = true;
     }
 
@@ -343,7 +343,7 @@ bool tagMP3(TagLib::MPEG::File* mp3, const Options& opts, const fs::path& path) 
             modified = true;
         }
     }
-
+    
     std::string newFname = path.string();
     if (opts.tag2fn != "") {
         newFname = tag2fn(id3v2->properties(), opts.tag2fn, opts.verbose);
@@ -352,13 +352,22 @@ bool tagMP3(TagLib::MPEG::File* mp3, const Options& opts, const fs::path& path) 
             modified = true;
         }
     }
+ 
+    Result res;
+    fs::path newPath(newFname);
+    if (newPath.is_absolute()) {
+        std::cout << "Cannot rename to absolute path\nAborting name change!\n";
+        newPath = path;
+    }
 
+    res.newPath = newPath;
+    
     if (opts.noact) {
         const auto& props = id3v2->properties();
         for (const auto& prop : props) {
             std::cout << prop.first.to8Bit() << ":\t" << prop.second.toString() << "\n";
         }
-        std::cout << path << " -> " << newFname << "\n";
+        if (path != newPath) std::cout << path << " -> " << newFname << "\n";
         modified = false;
     }
 
@@ -409,15 +418,16 @@ bool tagMP3(TagLib::MPEG::File* mp3, const Options& opts, const fs::path& path) 
         }
     }
 
+
     if (modified) {
         if (mp3->save()) {
             if (opts.verbose) std::cout << "Saved\n";
-            return true;
+            res.success = true;
         }
         else {
             std::cerr << "Failed to save\n";
-            return false;
+            res.success = false;
         }
     }
-    return false;
+    return res;
 }

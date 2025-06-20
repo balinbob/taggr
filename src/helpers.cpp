@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cctype>
 #include <iostream>
+#include <regex>
 
 /**
  * Returns a copy of the input string with all characters converted to lower
@@ -15,6 +16,17 @@ std::string toLower(const std::string& input) {
     return result;
 }
 
+/**
+ * Splits a string into two substrings at the first occurrence of an
+ * equals sign (=). If the string does not contain an equals sign, the
+ * first substring is the original string and the second substring is
+ * empty.
+ *
+ * For example, if the input string is "key=value", the first substring
+ * is "key" and the second substring is "value". If the input string is
+ * "noequals", the first substring is "noequals" and the second substring
+ * is an empty string.
+ */
 std::pair<std::string, std::string> splitOnEquals(const std::string& input) {
     std::string::size_type pos = input.find('=');
     std::string key;
@@ -31,6 +43,13 @@ std::pair<std::string, std::string> splitOnEquals(const std::string& input) {
     return std::make_pair(key, value);
 }
 
+/**
+ * Converts a picture type key to a picture type enumeration value.
+ * The enumeration values are consistent with the ID3v2 specification.
+ *
+ * @param originalKey The key to convert, such as "frontcover" or "backcover".
+ * @return The corresponding picture type enumeration value.
+ */
 int pictureTypeFromKey(const std::string& originalKey) {
     const std::string key = toLower(originalKey);
     if (key == "frontcover") return 3;   // Front cover
@@ -56,6 +75,14 @@ int pictureTypeFromKey(const std::string& originalKey) {
     else return 0; // Other (default)
 }
 
+/**
+ * Converts a picture type enumeration value to a string description.
+ *
+ * The values are consistent with the ID3v2 specification.
+ *
+ * @param type The picture type enumeration value to convert.
+ * @return A string description of the picture type.
+ */
 std::string pictureTypeToString(int type) {
     switch (type) {
         case 0:  return "Other";
@@ -83,14 +110,50 @@ std::string pictureTypeToString(int type) {
     }
 }
 
-bool doRename(const fs::path& oldPath, const fs::path& newPath, bool verbose) {
-    if (oldPath == newPath) return true;
-    if (verbose) std::cout << "Renaming " << oldPath << " to " << newPath << "\n";
+std::string sanitize_filename(const std::string& name) {
+    // Remove illegal characters: \ / : * ? " < > | and control chars
+    static const std::regex illegal(R"([\\/:*?"<>|\x00-\x1F])");
+    std::string cleaned = std::regex_replace(name, illegal, "_");
+
+    // Remove trailing spaces and dots (Windows restriction)
+    while (!cleaned.empty() && (cleaned.back() == ' ' || cleaned.back() == '.'))
+        cleaned.pop_back();
+
+    return cleaned;
+}
+
+fs::path sanitize_path(const fs::path& inputPath) {
+    fs::path result;
+    for (const auto& part : inputPath) {
+        // Skip empty components (can happen with leading/trailing slashes)
+        if (part.empty()) continue;
+        result /= sanitize_filename(part.string());
+    }
+    return result;
+}
+
+bool doRename(const fs::path& oldName, const fs::path& newName, bool verbose) {
+    if (oldName == newName) return true;
+
+    // Normalize slashes for cross-platform safety
+    fs::path normNewName = newName;
+    std::string normStr = normNewName.string();
+    std::replace(normStr.begin(), normStr.end(), '\\', '/');
+    normNewName = fs::path(normStr);
+
     try {
-        fs::rename(oldPath, newPath);
+        auto parent = normNewName.parent_path();
+        if (!parent.empty() && !fs::exists(parent))
+            fs::create_directories(parent);
+
+        if (fs::exists(normNewName))
+            fs::remove(normNewName);
+        fs::rename(oldName, normNewName);
+
+//        if (verbose) std::cout << "Renamed " << oldName << " -> " << normNewName << "\n";
+        return true;
     } catch (const std::exception& e) {
-        std::cerr << "Error renaming " << oldPath << " to " << newPath << ":\n" << e.what() << "\n";
+        std::cerr << "Rename failed: " << e.what() << "\n";
         return false;
-    }   
-    return true;
+    }
 }

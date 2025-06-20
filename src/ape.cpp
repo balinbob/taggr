@@ -110,10 +110,11 @@ bool addBinary(TagLib::APE::Tag* apeTag, const std::string& path, const std::str
     return true;
 }
 
-bool tagFromFn(TagLib::APE::Tag* apeTag, const Options& opts, const std::string& path) {
+bool tagFromFn(TagLib::APE::Tag* apeTag, const Options& opts, const std::string& path) {    
     bool modified = false;
     auto tags = fn2tag(path, opts.fn2tag);
     for (auto const& tag : tags) {
+        
         apeTag->addValue(tag.first.c_str(), tag.second.c_str(), true);
         if (opts.verbose) std::cout << "Setting " << tag.first << " = " << tag.second << "\n";
         modified = true;
@@ -163,6 +164,11 @@ Result tagAPE(TagLib::APE::File* ape, const Options& opts, const fs::path& path)
     }
     
     fs::path newPath(newFname);
+    if (newPath.is_absolute()) {
+        std::cout << "Cannot rename to absolute path\nAborting name change!\n";
+        newPath = path;
+    }
+
     Result res;
     res.newPath = newPath;
     
@@ -171,7 +177,7 @@ Result tagAPE(TagLib::APE::File* ape, const Options& opts, const fs::path& path)
         for (const auto& prop : props) {
             std::cout << prop.first.to8Bit() << ":\t" << prop.second.toString() << "\n";
         }
-        std::cout << path.string() << " -> " << newPath.string() << "\n";
+        if (path != newPath) std::cout << path.string() << " -> " << newPath.string() << "\n";
         modified = false;
     }
 
@@ -180,7 +186,7 @@ Result tagAPE(TagLib::APE::File* ape, const Options& opts, const fs::path& path)
     if (modified) {
         if (ape->save()) {
             if (opts.verbose) std::cout << "Saved\n";
-            res.success = true;;
+            res.success = true;
         }
         else {
             if (opts.verbose) std::cout << "Couldn't save\n";

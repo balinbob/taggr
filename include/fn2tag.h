@@ -13,7 +13,8 @@ const std::map<std::string, std::string> codeToTag = {
     {"%l", "album"},
     {"%a", "artist"},
     {"%d", "date"},
-    {"%D", "discnumber"}
+    {"%D", "discnumber"},
+    {"%c", "composer"}
     // Add more codes as needed
 };
 

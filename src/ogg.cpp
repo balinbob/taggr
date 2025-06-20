@@ -4,6 +4,7 @@
 #include "helpers.h"
 #include "flac.h"
 #include "fn2tag.h"
+#include "tag2fn.h"
 #include <taglib/fileref.h>
 #include <taglib/tag.h>
 #include <taglib/flacfile.h>
@@ -12,6 +13,7 @@
 #include <taglib/oggflacfile.h>
 #include <taglib/xiphcomment.h>
 #include <taglib/oggfile.h>
+#include <taglib/tpropertymap.h>
 #include <fstream>
 
 namespace fs = std::filesystem;
@@ -39,12 +41,8 @@ bool addPicture(ogg::Vorbis::File* ogg, const std::string& path, const std::stri
     return true;
 }
 
-bool tagOGG(ogg::Vorbis::File* ogg, const Options& opts, const fs::path& path) {
+Result tagOGG(ogg::Vorbis::File* ogg, const Options& opts, const fs::path& path) {
     bool modified = false;
-    if (!ogg->isValid()) {
-        std::cout << "Not a taggable file: " << path << "\n";
-        return false;
-    }
     
     auto* vc = ogg->tag();
     for (auto& cmd : opts.remov) {
@@ -95,8 +93,9 @@ bool tagOGG(ogg::Vorbis::File* ogg, const Options& opts, const fs::path& path) {
         if (addPicture(ogg, cmds.second, cmds.first, opts)) modified = true;
     }
 
-    for (auto& cmd : opts.fn2tag) {
+    if (opts.fn2tag != "") {
         auto tags = fn2tag(path.string(), opts.fn2tag);
+        if (opts.verbose) std::cout << "Found " << tags.size() << " tags from " << path.string() << "\n";
         for (const auto& tag : tags) {
             vc->addField(tag.first.c_str(), tag.second.c_str(), true);
             if (opts.verbose) std::cout << "Setting " << tag.first << " = " << tag.second << "\n";
@@ -104,6 +103,34 @@ bool tagOGG(ogg::Vorbis::File* ogg, const Options& opts, const fs::path& path) {
         }
     }
  
+    std::string newFname = path.string();
+
+    if (opts.tag2fn != "") {
+        newFname = tag2fn(vc->properties(), opts.tag2fn, opts.verbose);
+        if (newFname != path.string()) {
+            if (opts.verbose) std::cout << "Renaming to " << newFname << "\n";
+            modified = true;
+        }
+    }
+
+    fs::path newPath(newFname);
+    if (newPath.is_absolute()) {
+        std::cout << "Cannot rename to absolute path\nAborting name change!\n";
+        newPath = path;
+    }
+
+    Result res;
+    res.newPath = newPath;
+
+    if (opts.noact) {
+        const auto& props = vc->properties();
+        for (const auto& prop : props) {
+            std::cout << prop.first.to8Bit() << ": " << prop.second.toString() << "\n";
+        }
+        if (path != newPath) std::cout << path.string() << " -> " << newPath.string() << "\n";
+        modified = false;
+    }
+
     if (opts.show.size() > 0) showTag(vc, opts);
     
     if (opts.list) listTags(vc, opts);
@@ -111,11 +138,12 @@ bool tagOGG(ogg::Vorbis::File* ogg, const Options& opts, const fs::path& path) {
     if (modified) {
         if (ogg->save()) {
             if (opts.verbose) std::cout << "Saved\n";
+            res.success = true;
         }
         else {
             if (opts.verbose) std::cout << "Failed to save\n";
-            modified = false;
+            res.success = false;
         }
     }
-    return modified;
+    return res;
 }

@@ -49,10 +49,25 @@ int main(int argc, char** argv) {
         std::cout << "Usage:  " << argv[0] << " [options].. -- <files>..\n";
         std::cout << "Try '" << argv[0] << " --help' for more information.\n";
     }
-    int success = 0;
+
+    fs::path newPath;
     for (const auto& path : fpaths) {
         res = doMagic(path, opts);
+        if (opts.tag2fn == "") continue;
+
+        if (opts.noact || res.newPath == "" || res.newPath == path) {
+            if (opts.verbose) std::cout << "Skipping rename\n";}
+        else {
+            newPath = sanitize_path(res.newPath);
+
+            if (!doRename(path, newPath, opts.verbose)) {
+                std::cerr << "Error renaming " << path << " to " << newPath << "\n";
+                res.success = false;
+            }
+            else {
+                if (opts.verbose) std::cout << "Renamed " << path << " to " << newPath << "\n";
+            } 
+        }
     }
-    std::cout << res.newPath.string() << ", " << res.success << "\n";
-    return success;
+    return res.success;
 }
