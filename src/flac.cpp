@@ -12,7 +12,6 @@
 #include <taglib/tag.h>
 #include <taglib/flacfile.h>
 #include <taglib/vorbisfile.h>
-#include <taglib/oggflacfile.h>
 #include <taglib/tpropertymap.h>
 #include <taglib/flacpicture.h>
 

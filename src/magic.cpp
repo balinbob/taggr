@@ -10,10 +10,8 @@
 #include <iostream>
 #include <filesystem>
 #include <taglib/fileref.h>
-#include <taglib/tag.h>
 #include <taglib/flacfile.h>
 #include <taglib/vorbisfile.h>
-#include <taglib/vorbisproperties.h>
 #include <taglib/oggflacfile.h>
 #include <taglib/apefile.h>
 #include <taglib/mpegfile.h>
@@ -35,32 +33,25 @@ Result doMagic(const fs::path& path, const Options& opts) {
     if (auto* flac = dynamic_cast<TagLib::FLAC::File*>(f.file())) {
 
         res = tagFLAC(flac, opts, path);
-//        if (!result) return result;
     }
     else if (auto* ogg = dynamic_cast<TagLib::Ogg::Vorbis::File*>(f.file())) {
         res = tagOGG(ogg, opts, path);
-//        if (result != 0) return result;
     }
     else if (auto* oggflac = dynamic_cast<TagLib::Ogg::FLAC::File*>(f.file())) {
     
     }
     else if (auto* ape = dynamic_cast<TagLib::APE::File*>(f.file())) {
         res = tagAPE(ape, opts, path);
-//        if (result != 0) return result;   
     }
     else if (auto* mp3 = dynamic_cast<TagLib::MPEG::File*>(f.file())) {
         res = tagMP3(mp3, opts, path);
-//        if (result != 0) return result;        
     }
     else if (auto* wv = dynamic_cast<TagLib::WavPack::File*>(f.file())) {
         res = tagWV(wv, opts, path);
-//        if (result != 0) return result;
     }   
     else {
         std::cout << "Unknown taggable file: " << path << "\n";
         res.success = false;
     }
- 
     return res;
- 
 }

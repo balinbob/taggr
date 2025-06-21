@@ -49,6 +49,9 @@ Result tagOGG(ogg::Vorbis::File* ogg, const Options& opts, const fs::path& path)
         auto cmds = splitOnEquals(cmd);
         if (cmds.second == "") vc->removeFields(cmds.first.c_str());
         else vc->removeFields(cmds.first.c_str(), cmds.second.c_str());
+        
+        // can't remove pictures from ogg vorbis
+        
         if (opts.verbose) {
             std::cout << "Removing " << cmds.first;
             if (cmds.second != "") std::cout << " = " << cmds.second;

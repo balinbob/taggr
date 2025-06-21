@@ -3,14 +3,11 @@
 
 #include "main.h"
 #include "helpers.h"
-#include <iostream>
 #include <filesystem>
 #include "taglib/fileref.h"
-#include "taglib/tag.h"
 #include "taglib/flacfile.h"
 
 namespace fs = std::filesystem; 
-namespace flac = TagLib::FLAC;
 namespace ogg = TagLib::Ogg;
 
 bool addPicture(TagLib::FLAC::File* flac, const std::string& path, const std::string& key, const Options& opts);

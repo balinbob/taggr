@@ -8,6 +8,38 @@
 #include <string>
 #include <vector>
 
+/**
+ * Main function for the taggr application.
+ *
+ * This function initializes and configures the CLI application using CLI11
+ * library. It sets up various command line options and flags for processing
+ * audio files and managing metadata tags.
+ *
+ * Options and flags:
+ * - --recurse: Enable recursive file processing.
+ * - -v, --verbose: Enable verbose output.
+ * - -q, --quiet: Suppress filename output.
+ * - -n, --noact: Display actions without performing them.
+ * - -l, --list: List all metadata tags.
+ * - --clear: Clear all metadata tags.
+ * - -s, --show: Display specific tag values.
+ * - -t, --tag: Set a tag with a key-value pair.
+ * - -a, --add: Add a value to a multi-value tag.
+ * - -r, --remove: Remove a tag or tag value.
+ * - -b, --binary: Set a binary tag, e.g., cover art.
+ * - --fn2tag: Extract tags from the filename.
+ * - --tag2fn: Set the filename based on tags.
+ * - files: File paths and/or glob patterns for input files.
+ *
+ * The function parses command line arguments, collects files based on the
+ * provided options, and processes each file to apply the desired tag operations.
+ * If renaming is enabled, it renames files after processing.
+ *
+ * @param argc The number of command-line arguments.
+ * @param argv An array of command-line argument strings.
+ * @return An integer indicating success (0) or failure (non-zero).
+ */
+
 int main(int argc, char** argv) {
     CLI::App app{"taggr — test"};
     Result res;
@@ -53,6 +85,7 @@ int main(int argc, char** argv) {
     fs::path newPath;
     for (const auto& path : fpaths) {
         res = doMagic(path, opts);
+        // must rename after taglib closes file
         if (opts.tag2fn == "") continue;
 
         if (opts.noact || res.newPath == "" || res.newPath == path) {
