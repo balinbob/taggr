@@ -35,7 +35,7 @@ patternToRegex(const std::string& pattern) {
         regexStr += pattern[i];
         ++i;
     }
-    regexStr = ".*" + regexStr + "$";
+    regexStr = ".*?" + regexStr + "$";
     return {regexStr, groupOrder};
 }
 

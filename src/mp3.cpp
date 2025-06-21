@@ -191,6 +191,7 @@ bool addPicture(TagLib::MPEG::File* mp3,
     
     std::string mimetype;
     fs::path p(path);
+
     std::string ext = p.extension().string();
     if (toLower(ext) == ".jpg") mimetype = "image/jpeg";
     else if (toLower(ext) == ".png") mimetype = "image/png";
