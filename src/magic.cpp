@@ -4,6 +4,7 @@
 #include "flac.h"
 #include "ape.h"
 #include "mp3.h"
+#include "mp4.h"
 #include "wv.h"
 #include <vector>
 #include <string>
@@ -17,6 +18,7 @@
 #include <taglib/mpegfile.h>
 #include <taglib/wavpackfile.h>
 #include "ogg.h"
+#include "taglib/mp4tag.h"
 
 namespace fs = std::filesystem;
 
@@ -45,6 +47,9 @@ Result doMagic(const fs::path& path, const Options& opts) {
     }
     else if (auto* mp3 = dynamic_cast<TagLib::MPEG::File*>(f.file())) {
         res = tagMP3(mp3, opts, path);
+    }
+    else if (auto* mp4 = dynamic_cast<TagLib::MP4::File*>(f.file())) {
+        res = tagMP4(mp4, opts, path);
     }
     else if (auto* wv = dynamic_cast<TagLib::WavPack::File*>(f.file())) {
         res = tagWV(wv, opts, path);
