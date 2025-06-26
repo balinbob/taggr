@@ -74,30 +74,71 @@ void listTags(ogg::XiphComment* vc, const Options& opts) {
     return;
 }
 
-Result tagFLAC(TagLib::FLAC::File* flac, const Options& opts, const fs::path& path) {
+bool addTags(ogg::XiphComment* vc, const Options& opts) {
     bool modified = false;
-    auto* vc = flac->xiphComment(true);
-    
+    for (auto& cmd : opts.tag) {
+        auto cmds = splitOnEquals(cmd);
+        if (cmds.second == "") {
+            if (opts.verbose) std::cout << "Tag value required for " << cmds.first << "\n";
+            continue;
+        }
+        
+        vc->addField(cmds.first.c_str(), cmds.second.c_str(), true);
+        modified = true;
+        if (opts.verbose) std::cout << "Setting " << cmds.first << " = " << cmds.second << "\n";
+    }
+    for (auto& cmd : opts.add) {
+        auto cmds = splitOnEquals(cmd);
+        if (cmds.second == "") {
+            if (opts.verbose) std::cout << "Tag value required for " << cmds.first << "\n";
+            continue;
+        }
+        
+        vc->addField(cmds.first.c_str(), cmds.second.c_str(), false);
+        modified = true;
+        if (opts.verbose) std::cout << "Adding " << cmds.first << " = " << cmds.second << "\n";
+    }
+    return modified;
+}
+
+bool removeTags(ogg::XiphComment* vc, const Options& opts) {
+    bool modified = false;
     for (auto& cmd : opts.remov) {
         auto cmds = splitOnEquals(cmd);
         if (cmds.second == "") vc->removeFields(cmds.first.c_str());
         else vc->removeFields(cmds.first.c_str(), cmds.second.c_str());
         
-        TagLib::List<TagLib::FLAC::Picture*> const pics = flac->pictureList();
-        for (auto const& pic : pics) {
-            if (pic->type() == static_cast<TagLib::FLAC::Picture::Type>(pictureTypeFromKey(cmds.first))) {
-                flac->removePicture(pic);
-            }    
-        }    
-        
         if (opts.verbose) {
             std::cout << "Removing " << cmds.first;
             if (cmds.second != "") std::cout << " = " << cmds.second;
             std::cout << "\n";
-        }    
+        }
         modified = true;
-    }    
+    }
+    return modified;
+}
+
+
+Result tagFLAC(TagLib::FLAC::File* flac, const Options& opts, const fs::path& path) {
+    bool modified = false;
+    auto* vc = flac->xiphComment(true);
+
+    if (removeTags(vc, opts)) {
+        modified = true;
+    }
     
+    for (auto& cmd : opts.remov) {
+        auto cmds = splitOnEquals(cmd);
+        TagLib::List<TagLib::FLAC::Picture*> const pics = flac->pictureList();
+        for (auto const& pic : pics) {
+            if (pic->type() == static_cast<TagLib::FLAC::Picture::Type>(pictureTypeFromKey(cmds.first))) {
+                flac->removePicture(pic);
+                if (opts.verbose) std::cout << "Removing " << cmds.first << "\n";
+                modified = true;
+            }    
+        }    
+    }
+
     if (opts.clear) {
         flac->strip();
         flac->removePictures();
@@ -105,29 +146,8 @@ Result tagFLAC(TagLib::FLAC::File* flac, const Options& opts, const fs::path& pa
         modified = true;
     }
     
-    
-    for (auto& cmd : opts.tag) {
-        auto cmds = splitOnEquals(cmd);
-        if (cmds.second == "") {
-            if (opts.verbose) std::cout << "Cannot set empty tag value\n";
-            continue;
-        }    
-        vc->addField(cmds.first.c_str(), cmds.second.c_str());
-        if (opts.verbose) std::cout << "Setting " << cmds.first << " = " << cmds.second << "\n";
-        modified = true;
-    }    
-    
-    for (auto& cmd : opts.add) {
-        auto cmds = splitOnEquals(cmd);
-        if (cmds.second == "") { 
-            if (opts.verbose) std::cout << "Cannot add empty tag value\n";
-            continue;
-        }    
-        vc->addField(cmds.first.c_str(), cmds.second.c_str(), false);
-        if (opts.verbose) std::cout << "Adding " << cmds.first << " = " << cmds.second << "\n";
-        modified = true;
-    }    
-    
+    if (addTags(vc, opts)) modified = true;
+
     for (auto& cmd : opts.binary) {
         auto cmds = splitOnEquals(cmd);
         if (addPicture(flac, cmds.second, cmds.first, opts)) {
@@ -187,9 +207,13 @@ Result tagFLAC(TagLib::FLAC::File* flac, const Options& opts, const fs::path& pa
                         
     if (modified) {
         if (flac->save()) {
+            if (opts.verbose) std::cout << "Saved\n";
             res.success = true;
         }
-        else res.success = false;
+        else {
+            res.success = false;
+            std::cout << "Failed to save\n";
+        }
     }
     return res;
 }

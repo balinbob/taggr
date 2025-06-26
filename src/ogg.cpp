@@ -45,51 +45,19 @@ Result tagOGG(ogg::Vorbis::File* ogg, const Options& opts, const fs::path& path)
     bool modified = false;
     
     auto* vc = ogg->tag();
-    for (auto& cmd : opts.remov) {
-        auto cmds = splitOnEquals(cmd);
-        if (cmds.second == "") vc->removeFields(cmds.first.c_str());
-        else vc->removeFields(cmds.first.c_str(), cmds.second.c_str());
-        
-        // can't remove pictures from ogg vorbis
-        
-        if (opts.verbose) {
-            std::cout << "Removing " << cmds.first;
-            if (cmds.second != "") std::cout << " = " << cmds.second;
-            std::cout << "\n";
-        }
+
+    if (removeTags(vc, opts)) {
         modified = true;
     }
+    // can't remove pictures from ogg vorbis
+        
     if (opts.clear) {
         vc->removeAllFields();
         if (opts.verbose) std::cout << "Clearing all tags\n";
         modified = true;
     }
 
-    for (auto& cmd : opts.tag) {
-        auto cmds = splitOnEquals(cmd);
-        if (cmds.second == "") {
-            if (opts.verbose) std::cout << "Tag value required for " << cmds.first << "\n";
-            continue;
-        }
-        vc->addField(cmds.first.c_str(), cmds.second.c_str(), true);
-        if (opts.verbose) {
-            std::cout << "Setting " << cmds.first << " = " << cmds.second << "\n";
-        }
-        modified = true;
-    }
-
-    for (auto& cmd : opts.add) {
-        auto cmds = splitOnEquals(cmd);
-        if (cmds.second == "") {
-            if (opts.verbose) std::cout << "Tag value required for " << cmds.first << "\n";
-            continue;
-        }
-        vc->addField(cmds.first.c_str(), cmds.second.c_str(), false);
-        if (opts.verbose) {
-            std::cout << "Adding " << cmds.first << " = " << cmds.second << "\n";
-        }
-        modified = true;
-    }
+    if (addTags(vc, opts)) modified = true;
 
     for (auto& cmd : opts.binary) {
         auto cmds = splitOnEquals(cmd);
@@ -137,7 +105,7 @@ Result tagOGG(ogg::Vorbis::File* ogg, const Options& opts, const fs::path& path)
     if (opts.show.size() > 0) showTag(vc, opts);
     
     if (opts.list) listTags(vc, opts);
-    
+       
     if (modified) {
         if (ogg->save()) {
             if (opts.verbose) std::cout << "Saved\n";

@@ -19,6 +19,8 @@
 #include <taglib/wavpackfile.h>
 #include "ogg.h"
 #include "taglib/mp4tag.h"
+#include "taglib/opusfile.h"
+#include "opus.h"
 
 namespace fs = std::filesystem;
 
@@ -41,6 +43,9 @@ Result doMagic(const fs::path& path, const Options& opts) {
     }
     else if (auto* oggflac = dynamic_cast<TagLib::Ogg::FLAC::File*>(f.file())) {
     
+    }
+    else if (auto* opus = dynamic_cast<TagLib::Ogg::Opus::File*>(f.file())) {
+        res = tagOPUS(opus, opts, path);
     }
     else if (auto* ape = dynamic_cast<TagLib::APE::File*>(f.file())) {
         res = tagAPE(ape, opts, path);
