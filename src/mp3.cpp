@@ -406,7 +406,7 @@ Result tagMP3(TagLib::MPEG::File* mp3, const Options& opts, const fs::path& path
             const auto& frameID = entry.first;
             const auto& frames = entry.second;
             auto key = IDToKey(frameID);
-            for (auto& frame : frames) {
+            for (const auto& frame : frames) {
                 if (frame->frameID() == "APIC") {
                     auto val = reinterpret_cast<TagLib::ID3v2::AttachedPictureFrame*>(frame);
                     std::cout << pictureTypeToString(val->type()) << ":\t " << val->toString().to8Bit() << "\n";

@@ -4,6 +4,7 @@
 #include "helpers.h"
 #include "collectfiles.h"
 #include "magic.h"
+#include "dup.h"
 #include <iostream>
 #include <string>
 #include <vector>
@@ -66,6 +67,8 @@ int main(int argc, char** argv) {
     app.add_option(",--fn2tag", opts.fn2tag, "extract tags from filename"
         "\nEx: --fn2tag \"\\%l\\%n %t.flac\"");
     app.add_option(",--tag2fn", opts.tag2fn, "set filename from tags");
+    app.add_option("-d,--dup", opts.dup, "duplicate tags from one file to another"
+        "\nEx: --dup src.wv dest.ogg OR dest.ogg --dup src.wv");
     app.add_option("files", opts.files, "filepaths and/or globs")
                 ->required()
                 ->expected(-1);
@@ -77,6 +80,7 @@ int main(int argc, char** argv) {
     if (opts.files.size() > 0) {
         fpaths = collectFiles(opts);
     }
+
     else {
         std::cout << "Usage:  " << argv[0] << " [options].. -- <files>..\n";
         std::cout << "Try '" << argv[0] << " --help' for more information.\n";
@@ -84,6 +88,7 @@ int main(int argc, char** argv) {
 
     fs::path newPath;
     for (const auto& path : fpaths) {
+        if (opts.dup != "") bool success = dupTags(opts.dup, path.string(), opts);
         res = doMagic(path, opts);
         // must rename after taglib closes file
         if (opts.tag2fn == "") continue;

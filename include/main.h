@@ -17,6 +17,7 @@ struct Options {
     std::vector<std::string> binary;
     std::string fn2tag = "";
     std::string tag2fn = "";
+    std::string dup = "";
     std::vector<std::string> files;
 };
 

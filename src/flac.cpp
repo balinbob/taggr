@@ -174,9 +174,6 @@ Result tagFLAC(TagLib::FLAC::File* flac, const Options& opts, const fs::path& pa
         }
     }
 
-    
-
-
     fs::path newPath(newFname);
     if (newPath.is_absolute()) {
         std::cout << "Cannot rename to absolute path\nAborting name change!\n";
