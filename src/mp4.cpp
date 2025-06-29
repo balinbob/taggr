@@ -100,7 +100,17 @@ Result tagMP4(TagLib::MP4::File* mp4, const Options& opts, const fs::path& path)
     if (opts.remov.size() > 0) {
             for (auto tagCmd : opts.remov) {
             auto cmds = splitOnEquals(tagCmd);
+            if (cmds.first == "frontcover") {
+                const auto& cover = mp4Tag->item("covr");
+                if (!cover.isValid()) continue; 
+                mp4Tag->removeItem("covr");
+                if (opts.verbose) std::cout << "Removing cover art\n";
+                modified = true;
+                continue;
+            }
             auto key = getAtomKey(cmds.first);
+            const auto& item = mp4Tag->item(key.c_str());
+            if (!item.isValid()) continue;
             mp4Tag->removeItem(key.c_str());
             if (opts.verbose) std::cout << "Removing " << cmds.first << "\n";
             modified = true;
@@ -110,6 +120,13 @@ Result tagMP4(TagLib::MP4::File* mp4, const Options& opts, const fs::path& path)
     for (auto tagCmd : opts.tag) {
         auto cmds = splitOnEquals(tagCmd);
         auto key = getAtomKey(cmds.first);
+        if (cmds.first == "tracknumber" || cmds.first == "discnumber") {
+            auto item = TagLib::MP4::Item(stoi(cmds.second), 0);
+            mp4Tag->setItem(key.c_str(), item);
+            if (opts.verbose) std::cout << "Setting " << cmds.first <<  " = " << cmds.second << "\n";
+            modified = true;
+            continue;
+        }
         auto item = TagLib::MP4::Item(TagLib::StringList(TagLib::String(cmds.second)));
         mp4Tag->setItem(key.c_str(), item);
         if (opts.verbose) std::cout << "Setting " << cmds.first <<  " = " << cmds.second << "\n";
@@ -168,6 +185,11 @@ Result tagMP4(TagLib::MP4::File* mp4, const Options& opts, const fs::path& path)
         for (auto prop : props) {
             std::cout << prop.first.to8Bit() << ":\t" << prop.second.toString() << "\n";
         }
+        const auto& coverItem = mp4Tag->item("covr");
+        if (coverItem.isValid()) {
+            std::cout << "Cover Art:\t" << coverItem.atomDataType() << "\n";
+        }
+
     }
 
     if (opts.show.size() > 0) {
