@@ -51,10 +51,7 @@ void showTag(ogg::XiphComment* vc, const Options& opts) {
     for (auto& cmd : opts.show) {
         auto cmds = splitOnEquals(cmd);
         auto const prop = props.find(cmds.first.c_str());
-        if (prop == props.end()) {
-            if (opts.verbose) std::cout << "No such tag: " << cmds.first << "\n";
-            continue;
-        }
+        if (prop == props.end()) continue;
         else {
             if (cmds.second == "") std::cout << prop->first << ": " << prop->second.toString() << "\n";
             else {
@@ -193,6 +190,16 @@ Result tagFLAC(TagLib::FLAC::File* flac, const Options& opts, const fs::path& pa
     }
 
     showTag(vc, opts);
+    TagLib::List<TagLib::FLAC::Picture*> const pics = flac->pictureList();
+    for (const auto& cmd : opts.show) {
+        const auto& cmds = splitOnEquals(cmd);
+        const auto& key = pictureTypeFromKey(cmds.first);
+        for (auto const& pic : pics) {
+            if (pic->type() == static_cast<TagLib::FLAC::Picture::Type>(key)) {
+                std::cout << pictureTypeToString(pic->type()) << "\t" << pic->description().to8Bit() << "\n";
+            }
+        }
+    }    
 
     if (opts.list) {
         listTags(vc, opts);
