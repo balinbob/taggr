@@ -46,13 +46,28 @@ Result tagOGG(ogg::Vorbis::File* ogg, const Options& opts, const fs::path& path)
     
     auto* vc = ogg->tag();
 
-    if (removeTags(vc, opts)) {
-        modified = true;
+    if (removeTags(vc, opts)) modified = true;
+
+    
+    
+/*    
+    for (auto& cmd : opts.remov) {
+        auto cmds = splitOnEquals(cmd);
+        TagLib::List<TagLib::FLAC::Picture*> const pics = vc->pictureList();
+        for (auto const& pic : pics) {
+            if (pic->type() == static_cast<TagLib::FLAC::Picture::Type>(pictureTypeFromKey(cmds.first))) {
+                vc->removePicture(pic);
+                if (opts.verbose) std::cout << "Removing " << cmds.first << "\n";
+                modified = true;
+            }    
+        }    
     }
-    // can't remove pictures from ogg vorbis
-        
+
+    // can't remove pictures from ogg vorbis (yet)
+*/        
     if (opts.clear) {
         vc->removeAllFields();
+        vc->removeAllPictures();
         if (opts.verbose) std::cout << "Clearing all tags\n";
         modified = true;
     }

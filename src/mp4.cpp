@@ -192,13 +192,16 @@ Result tagMP4(TagLib::MP4::File* mp4, const Options& opts, const fs::path& path)
 
     }
 
-    if (opts.show.size() > 0) {
-        for (auto tagCmd : opts.show) {
-            auto cmds = splitOnEquals(tagCmd);
-            auto key = getAtomKey(cmds.first);
-            auto prop = props.find(key.c_str());
-            if (prop != props.end()) {
-                std::cout << prop->first.to8Bit() << ":\t" << prop->second.toString() << "\n";
+    for (auto tagCmd : opts.show) {
+        auto cmds = splitOnEquals(tagCmd);
+        auto prop = props.find(cmds.first.c_str());
+        if (prop != props.end()) {
+            std::cout << prop->first.to8Bit() << ":\t" << prop->second.toString() << "\n";
+        }
+        if (cmds.first == "frontcover") {
+            const auto& coverItem = mp4Tag->item("covr");
+            if (coverItem.isValid()) {
+                std::cout << "Cover Art:\t" << coverItem.atomDataType() << "\n";
             }
         }
     }
@@ -213,7 +216,6 @@ Result tagMP4(TagLib::MP4::File* mp4, const Options& opts, const fs::path& path)
         }
         modified = false;
     }
-
 
     res.success = false;
 

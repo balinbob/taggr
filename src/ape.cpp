@@ -106,6 +106,12 @@ bool addBinary(TagLib::APE::Tag* apeTag, const std::string& path, const std::str
     TagLib::ByteVector dataVector(data.data(), data.size());
     
     apeTag->setData(key, dataVector);
+    /*   after 2.1 taglib is available
+    std::string fieldName = "Cover Art (Front)";
+    std::string valueWithDesc = "Front Cover Art" + '0';    
+    valueWithDesc.insert(valueWithDesc.end(), data.begin(), data.end());
+    apeTag->setBinaryData(fieldName, valueWithDesc.data(), valueWithDesc.size());
+    */
     if (opts.verbose) std::cout << "Adding " << key << "\n";
     return true;
 }
